@@ -4,6 +4,7 @@ import random
 import json
 import urllib.request
 import urllib.error
+import urllib.parse
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -26,6 +27,28 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
 
 app = Flask(__name__)
+
+class VercelPathMiddleware:
+    """WSGI middleware ensuring proper URL routing when deployed under Vercel Serverless rewrites."""
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        query = environ.get("QUERY_STRING", "")
+        if "path=" in query:
+            params = urllib.parse.parse_qs(query)
+            p = params.get("path", [None])[0]
+            if p and p not in ("/api/index", "/api/index.py"):
+                while p.startswith("//"):
+                    p = p[1:]
+                if not p.startswith("/"):
+                    p = "/" + p
+                environ["PATH_INFO"] = p
+        elif environ.get("HTTP_X_MATCHED_PATH"):
+            environ["PATH_INFO"] = environ.get("HTTP_X_MATCHED_PATH")
+        return self.wsgi_app(environ, start_response)
+
+app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-lostfound-hub-2026-key")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
@@ -869,8 +892,6 @@ def api_stats():
 
 @app.errorhandler(404)
 def not_found_error(error):
-    if os.environ.get("VERCEL"):
-        return f"404_DEBUG: PATH_INFO='{request.environ.get('PATH_INFO')}' | request.path='{request.path}' | X_MATCHED='{request.environ.get('HTTP_X_MATCHED_PATH')}' | QUERY='{request.environ.get('QUERY_STRING')}'", 404
     return render_template("details.html", not_found=True), 404
 
 @app.errorhandler(500)
