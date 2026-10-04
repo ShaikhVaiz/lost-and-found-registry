@@ -869,6 +869,8 @@ def api_stats():
 
 @app.errorhandler(404)
 def not_found_error(error):
+    if os.environ.get("VERCEL"):
+        return f"404_DEBUG: PATH_INFO='{request.environ.get('PATH_INFO')}' | request.path='{request.path}' | X_MATCHED='{request.environ.get('HTTP_X_MATCHED_PATH')}' | QUERY='{request.environ.get('QUERY_STRING')}'", 404
     return render_template("details.html", not_found=True), 404
 
 @app.errorhandler(500)
