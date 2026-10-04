@@ -926,17 +926,23 @@ def matches_matrix():
 @admin_required
 def admin_dashboard():
     """Admin Control Panel"""
-    reports = Report.query.order_by(Report.id.desc()).all()
-    users = User.query.order_by(User.id.desc()).all()
+    try:
+        reports = Report.query.order_by(Report.id.desc()).all()
+        users = User.query.order_by(User.id.desc()).all()
 
-    stats = {
-        "total_reports": len(reports),
-        "total_users": len(users),
-        "lost_active": sum(1 for r in reports if r.report_type == "lost" and r.status == "Active"),
-        "found_active": sum(1 for r in reports if r.report_type == "found" and r.status == "Active"),
-        "resolved": sum(1 for r in reports if r.status == "Resolved")
-    }
-    return render_template("admin.html", reports=reports, users=users, stats=stats)
+        stats = {
+            "total_reports": len(reports),
+            "total_users": len(users),
+            "lost_active": sum(1 for r in reports if r.report_type == "lost" and r.status == "Active"),
+            "found_active": sum(1 for r in reports if r.report_type == "found" and r.status == "Active"),
+            "resolved": sum(1 for r in reports if r.status == "Resolved")
+        }
+        return render_template("admin.html", reports=reports, users=users, stats=stats)
+    except Exception as e_adm:
+        db.session.rollback()
+        print(f">> Admin dashboard notice: {e_adm}")
+        flash("Admin dashboard loaded with fallback.", "warning")
+        return render_template("admin.html", reports=[], users=[], stats={"total_reports":0, "total_users":0, "lost_active":0, "found_active":0, "resolved":0})
 
 @app.route("/api/stats")
 def api_stats():

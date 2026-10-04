@@ -84,7 +84,7 @@
       <div class="info-box">
         <div>📍 <strong>Location:</strong> {{ item.location }}</div>
         <div>🗓️ <strong>Date:</strong> {{ item.incident_date }} {% if item.incident_time %}&bull; Approximate Time: {{ item.incident_time }}{% endif %}</div>
-        <div>🕒 <strong>Logged On:</strong> {{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+        <div>🕒 <strong>Logged On:</strong> {{ item.created_at.strftime('%Y-%m-%d %H:%M') if item.created_at else '—' }}</div>
       </div>
 
       <div>
