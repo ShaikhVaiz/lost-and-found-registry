@@ -23,7 +23,7 @@ from flask_sqlalchemy import SQLAlchemy
 load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
+UPLOAD_FOLDER = os.path.join("/tmp", "uploads") if os.environ.get("VERCEL") else os.path.join(BASE_DIR, "static", "uploads")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
 
 app = Flask(__name__)
@@ -79,6 +79,9 @@ elif raw_db_url and raw_db_url.startswith("postgres://"):
     db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
 else:
     db_url = raw_db_url
+
+if os.environ.get("VERCEL") and "sqlite" in db_url:
+    db_url = "sqlite:////tmp/lost_found.db"
 
 engine_options = {}
 if "mysql" in db_url:
@@ -207,7 +210,7 @@ def send_email_otp(to_email, otp_code):
     print(f"===========================================================\n")
 
     if not RESEND_API_KEY:
-        return True, "OTP generated (Console fallback - add RESEND_API_KEY in .env for direct inbox delivery)"
+        return False, f"Verification Code: {otp_code} (Console fallback - add RESEND_API_KEY in Vercel Environment Variables)"
 
     # 1. Try Resend Python SDK
     try:
@@ -221,7 +224,7 @@ def send_email_otp(to_email, otp_code):
         }
         resp = resend.Emails.send(params)
         print(f">> Resend SDK email dispatched: {resp}")
-        return True, "Verification code sent directly to your email inbox!"
+        return True, "A 6-digit verification code has been dispatched to your email inbox!"
     except Exception as e_sdk:
         print(f">> Resend SDK notice ({e_sdk}), trying direct REST API...")
 
@@ -243,11 +246,11 @@ def send_email_otp(to_email, otp_code):
         with urllib.request.urlopen(req, timeout=10) as resp:
             if resp.status in (200, 201):
                 print(">> Resend REST API email sent successfully!")
-                return True, "Verification code sent directly to your email inbox!"
+                return True, "A 6-digit verification code has been dispatched to your email inbox!"
     except Exception as e_rest:
         print(f">> Resend REST API notice: {e_rest}")
 
-    return True, f"OTP dispatched (Console fallback: {otp_code})"
+    return False, f"Verification Code: {otp_code} (Resend test domain only sends to registered email shaikhv750@gmail.com)"
 
 # ==============================================================================
 # Helpers & Heuristic Matching Engine
@@ -415,6 +418,25 @@ def seed_initial_data():
 # Web Routes
 # ==============================================================================
 
+_db_initialized = False
+
+@app.before_request
+def ensure_db_initialized():
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            db.create_all()
+            seed_initial_data()
+            _db_initialized = True
+        except Exception as e:
+            db.session.rollback()
+            print(f">> DB init notice: {e}")
+
+@app.route("/static/uploads/<path:filename>")
+def uploaded_file(filename):
+    from flask import send_from_directory
+    return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
 @app.route("/debug-path")
 def debug_path():
     import json
@@ -560,14 +582,18 @@ def forgot_password():
         otp_code = str(random.randint(100000, 999999))
         expires_at = datetime.now() + timedelta(minutes=10)
 
-        PasswordReset.query.filter_by(email=email, used=False).update({"used": True})
-        pr = PasswordReset(email=email, otp=otp_code, expires_at=expires_at, used=False)
-        db.session.add(pr)
-        db.session.commit()
+        try:
+            PasswordReset.query.filter_by(email=email, used=False).update({"used": True})
+            pr = PasswordReset(email=email, otp=otp_code, expires_at=expires_at, used=False)
+            db.session.add(pr)
+            db.session.commit()
+        except Exception as e_pr:
+            db.session.rollback()
+            print(f">> PasswordReset DB notice: {e_pr}")
 
-        send_email_otp(email, otp_code)
+        sent, msg = send_email_otp(email, otp_code)
         session["reset_email"] = email
-        flash("A 6-digit verification code has been sent to your email inbox.", "success")
+        flash(msg, "success" if sent else "info")
         return redirect(url_for("verify_otp"))
 
     return render_template("forgot_password.html")
@@ -625,22 +651,27 @@ def verify_otp():
 
     return render_template("verify_otp.html", email=email)
 
-@app.route("/forgot-password/resend")
+@app.route("/forgot-password/resend", methods=["GET", "POST"])
 def resend_otp():
     email = session.get("reset_email")
     if not email:
+        flash("Password reset session expired. Please enter your email again.", "warning")
         return redirect(url_for("forgot_password"))
 
     otp_code = str(random.randint(100000, 999999))
     expires_at = datetime.now() + timedelta(minutes=10)
 
-    PasswordReset.query.filter_by(email=email, used=False).update({"used": True})
-    pr = PasswordReset(email=email, otp=otp_code, expires_at=expires_at, used=False)
-    db.session.add(pr)
-    db.session.commit()
+    try:
+        PasswordReset.query.filter_by(email=email, used=False).update({"used": True})
+        pr = PasswordReset(email=email, otp=otp_code, expires_at=expires_at, used=False)
+        db.session.add(pr)
+        db.session.commit()
+    except Exception as e_pr:
+        db.session.rollback()
+        print(f">> PasswordReset DB notice in resend: {e_pr}")
 
-    send_email_otp(email, otp_code)
-    flash("A fresh verification code has been dispatched to your email.", "info")
+    sent, msg = send_email_otp(email, otp_code)
+    flash(msg, "success" if sent else "info")
     return redirect(url_for("verify_otp"))
 
 @app.route("/logout")
@@ -698,7 +729,12 @@ def report():
                 fname = secure_filename(file.filename)
                 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
                 image_filename = f"{timestamp}_{fname}"
-                file.save(os.path.join(app.config["UPLOAD_FOLDER"], image_filename))
+                try:
+                    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+                    file.save(os.path.join(app.config["UPLOAD_FOLDER"], image_filename))
+                except Exception as e_up:
+                    print(f">> File upload notice: {e_up}")
+                    image_filename = None
 
         new_report = Report(
             user_id=session.get("user_id"),
@@ -814,8 +850,12 @@ def edit_report(item_id):
             if file and file.filename and allowed_file(file.filename):
                 fname = secure_filename(file.filename)
                 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-                report.image_filename = f"{timestamp}_{fname}"
-                file.save(os.path.join(app.config["UPLOAD_FOLDER"], report.image_filename))
+                try:
+                    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+                    file.save(os.path.join(app.config["UPLOAD_FOLDER"], f"{timestamp}_{fname}"))
+                    report.image_filename = f"{timestamp}_{fname}"
+                except Exception as e_up:
+                    print(f">> File upload notice: {e_up}")
 
         db.session.commit()
         flash("Report updated successfully.", "success")
