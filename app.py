@@ -420,12 +420,27 @@ def seed_initial_data():
 
 _db_initialized = False
 
+def check_password_resets_schema():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        if "password_resets" in inspector.get_table_names():
+            cols = [c["name"] for c in inspector.get_columns("password_resets")]
+            if "id" not in cols:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text("DROP TABLE password_resets;"))
+                    conn.commit()
+                db.create_all()
+    except Exception as e:
+        print(f">> Schema check notice: {e}")
+
 @app.before_request
 def ensure_db_initialized():
     global _db_initialized
     if not _db_initialized:
         try:
             db.create_all()
+            check_password_resets_schema()
             seed_initial_data()
             _db_initialized = True
         except Exception as e:
@@ -443,12 +458,8 @@ def debug_path():
     return json.dumps({
         "path_info": request.environ.get("PATH_INFO"),
         "request_path": request.path,
-        "matched_path": request.environ.get("HTTP_X_MATCHED_PATH"),
-        "query_string": request.environ.get("QUERY_STRING"),
         "url": request.url,
-        "db_uri": app.config.get("SQLALCHEMY_DATABASE_URI"),
-        "vercel_env": os.environ.get("VERCEL"),
-        "env_keys": [k for k in os.environ.keys() if any(x in k.upper() for x in ("VERCEL", "LAMBDA", "REGION", "AWS"))]
+        "database": "connected" if db.engine else "disconnected"
     }, indent=2), 200, {"Content-Type": "application/json"}
 
 @app.route("/")
@@ -602,6 +613,7 @@ def forgot_password():
     return render_template("forgot_password.html")
 
 @app.route("/verify-otp", methods=["GET", "POST"])
+@app.route("/verify_otp", methods=["GET", "POST"])
 def verify_otp():
     if "user_id" in session:
         return redirect(url_for("index"))
@@ -628,29 +640,35 @@ def verify_otp():
             flash("Passwords do not match. Please re-enter.", "danger")
             return render_template("verify_otp.html", email=email)
 
-        now = datetime.now()
-        reset_record = PasswordReset.query.filter(
-            PasswordReset.email.ilike(email),
-            PasswordReset.otp == otp_entered,
-            PasswordReset.used == False,
-            PasswordReset.expires_at >= now
-        ).order_by(PasswordReset.id.desc()).first()
+        try:
+            now = datetime.now()
+            reset_record = PasswordReset.query.filter(
+                PasswordReset.email.ilike(email),
+                PasswordReset.otp == otp_entered,
+                PasswordReset.used == False,
+                PasswordReset.expires_at >= now
+            ).order_by(PasswordReset.id.desc()).first()
 
-        if not reset_record:
-            flash("Invalid or expired verification code (OTP). Please check and re-enter, or request a new code.", "danger")
+            if not reset_record:
+                flash("Invalid or expired verification code (OTP). Please check and re-enter, or request a new code.", "danger")
+                return render_template("verify_otp.html", email=email)
+
+            user = User.query.filter(User.email.ilike(email)).first()
+            if user:
+                user.password_hash = generate_password_hash(new_password)
+                reset_record.used = True
+                db.session.commit()
+                session.pop("reset_email", None)
+                flash("Your password has been successfully reset! Please sign in with your new password.", "success")
+                return redirect(url_for("login"))
+            else:
+                flash("No citizen account found for this email address. Please register a new account.", "warning")
+                return redirect(url_for("register"))
+        except Exception as e_verify:
+            db.session.rollback()
+            print(f">> verify_otp error: {e_verify}")
+            flash("An error occurred while resetting your password. Please try again or request a new code.", "danger")
             return render_template("verify_otp.html", email=email)
-
-        user = User.query.filter(User.email.ilike(email)).first()
-        if user:
-            user.password_hash = generate_password_hash(new_password)
-            reset_record.used = True
-            db.session.commit()
-            session.pop("reset_email", None)
-            flash("Your password has been successfully reset! Please sign in with your new password.", "success")
-            return redirect(url_for("login"))
-        else:
-            flash("Account not found. Please register.", "danger")
-            return redirect(url_for("register"))
 
     return render_template("verify_otp.html", email=email)
 
@@ -943,7 +961,7 @@ def internal_error(error):
     import traceback
     tb = traceback.format_exc()
     print(f">> 500 Internal Error: {error}\n{tb}")
-    return f"<h3>500 Internal Server Error</h3><p>{error}</p><pre style='white-space:pre-wrap; background:#f5f5f5; padding:12px;'>{tb}</pre>", 500
+    return "<h3>500 Internal Server Error</h3><p>Something went wrong. Please <a href='/'>return to the registry portal</a>.</p>", 500
 
 # ==============================================================================
 # Application Entry Point
