@@ -392,9 +392,18 @@ def seed_initial_data():
 # Web Routes
 # ==============================================================================
 
+@app.route("/debug-path")
+def debug_path():
+    import json
+    return json.dumps({
+        "path_info": request.environ.get("PATH_INFO"),
+        "request_path": request.path,
+        "matched_path": request.environ.get("HTTP_X_MATCHED_PATH"),
+        "query_string": request.environ.get("QUERY_STRING"),
+        "url": request.url,
+    }, indent=2), 200, {"Content-Type": "application/json"}
+
 @app.route("/")
-@app.route("/api/index")
-@app.route("/api/index.py")
 def index():
     """Official Entry Point: redirects to Login if unauthenticated, else shows platform"""
     if "user_id" not in session:
