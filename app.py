@@ -446,6 +446,9 @@ def debug_path():
         "matched_path": request.environ.get("HTTP_X_MATCHED_PATH"),
         "query_string": request.environ.get("QUERY_STRING"),
         "url": request.url,
+        "db_uri": app.config.get("SQLALCHEMY_DATABASE_URI"),
+        "vercel_env": os.environ.get("VERCEL"),
+        "env_keys": [k for k in os.environ.keys() if any(x in k.upper() for x in ("VERCEL", "LAMBDA", "REGION", "AWS"))]
     }, indent=2), 200, {"Content-Type": "application/json"}
 
 @app.route("/")
@@ -937,7 +940,10 @@ def not_found_error(error):
 @app.errorhandler(500)
 def internal_error(error):
     db.session.rollback()
-    return "<h3>500 Internal Server Error</h3><p>Something went wrong. Please return home.</p>", 500
+    import traceback
+    tb = traceback.format_exc()
+    print(f">> 500 Internal Error: {error}\n{tb}")
+    return f"<h3>500 Internal Server Error</h3><p>{error}</p><pre style='white-space:pre-wrap; background:#f5f5f5; padding:12px;'>{tb}</pre>", 500
 
 # ==============================================================================
 # Application Entry Point
