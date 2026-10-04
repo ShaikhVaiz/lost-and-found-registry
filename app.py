@@ -393,6 +393,8 @@ def seed_initial_data():
 # ==============================================================================
 
 @app.route("/")
+@app.route("/api/index")
+@app.route("/api/index.py")
 def index():
     """Official Entry Point: redirects to Login if unauthenticated, else shows platform"""
     if "user_id" not in session:
