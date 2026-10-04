@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-vintage">
+  <span class="hero-seal">Official Public Registry</span>
+  <h1 class="hero-title">Lost Something? Found Something?</h1>
+  <p class="hero-desc">
+    Official institutional registry to reunite belongings with their owners in public transit terminals, university campuses, municipal libraries, and community hubs with automated cross-matching.
+  </p>
+
+  <div class="hero-actions">
+    <a href="{{ url_for('report', type='lost') }}" class="btn btn-lost" style="padding: 0.85rem 1.6rem; font-size: 1rem;">
+      🔴 Report Lost Item
+    </a>
+    <a href="{{ url_for('report', type='found') }}" class="btn btn-found" style="padding: 0.85rem 1.6rem; font-size: 1rem;">
+      🟢 Report Found Item
+    </a>
+    <a href="{{ url_for('search') }}" class="btn btn-secondary" style="padding: 0.85rem 1.6rem; font-size: 1rem;">
+      🔍 Search All Items
+    </a>
+  </div>
+</section>
+
+<!-- Stats Grid -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-num">{{ stats.total }}</div>
+    <div class="stat-label">Total Reports</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color: var(--lost-stamp);">{{ stats.lost }}</div>
+    <div class="stat-label">Active Lost Items</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color: var(--found-stamp);">{{ stats.found }}</div>
+    <div class="stat-label">Stored Found Items</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color: var(--resolved-stamp);">{{ stats.resolved }}</div>
+    <div class="stat-label">Returned / Resolved</div>
+  </div>
+</div>
+
+<!-- 3 Steps Explanation -->
+<section style="margin-bottom: 2.5rem;">
+  <div style="text-align: center; margin-bottom: 1.5rem;">
+    <h2 style="font-size: 1.4rem; font-weight: 700;">How The System Works</h2>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">Simple 3-step workflow to recover lost belongings</p>
+  </div>
+
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="step-icon">1</div>
+      <h3>Submit Report</h3>
+      <p>Log details including item category, description, photograph, location, and confidential identification marks.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-icon">2</div>
+      <h3>Smart Matching</h3>
+      <p>The algorithmic cross-matching engine checks opposing reports using categories, keywords, place proximity, and dates.</p>
+    </div>
+    <div class="step-card">
+      <div class="step-icon">3</div>
+      <h3>Verify &amp; Recover</h3>
+      <p>Connect with the finder or official desk, verify ownership proof, and mark the item as safely Resolved.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Recent Reports Section -->
+<section>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+    <h2 style="font-size: 1.3rem; font-weight: 700;">Recent Belongings Added</h2>
+    <a href="{{ url_for('search') }}" class="btn btn-secondary btn-sm">View All in Search &rarr;</a>
+  </div>
+
+  {% if recent_reports %}
+    <div class="items-grid">
+      {% for item in recent_reports %}
+        <div class="item-card">
+          <div class="item-card-img-wrap">
+            {% if item.image_filename %}
+              <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.title }}" class="item-card-img">
+            {% else %}
+              <div class="placeholder-img">
+                {% if 'Electronics' in item.category %}📱{% elif 'Wallet' in item.category %}👛{% elif 'Key' in item.category %}🔑{% elif 'Document' in item.category %}📄{% elif 'Bag' in item.category %}🎒{% else %}📦{% endif %}
+              </div>
+            {% endif %}
+            <div class="item-card-badges">
+              <span class="badge badge-{{ item.report_type }}">{{ item.report_type.upper() }}</span>
+              <span class="badge badge-{{ item.status.lower() }}">{{ item.status.upper() }}</span>
+            </div>
+          </div>
+
+          <div class="item-card-body">
+            <span class="item-card-category">{{ item.category }}</span>
+            <h3 class="item-card-title">{{ item.title }}</h3>
+            <p class="item-card-desc">{{ item.description }}</p>
+
+            <div class="item-meta">
+              <div class="item-meta-row">
+                <span>📍</span>
+                <span><strong>Location:</strong> {{ item.location }}</span>
+              </div>
+              <div class="item-meta-row">
+                <span>🗓️</span>
+                <span><strong>Date:</strong> {{ item.incident_date }}</span>
+              </div>
+            </div>
+
+            <a href="{{ url_for('item_details', item_id=item.id) }}" class="btn btn-secondary" style="width: 100%;">
+              View Details &amp; Matches &rarr;
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div style="background: var(--bg-card); padding: 3.5rem 2rem; text-align: center; border-radius: var(--radius-lg); border: 2px dashed var(--border-vintage); box-shadow: var(--shadow-sm);">
+      <div style="font-size: 3rem; margin-bottom: 0.75rem;">📋</div>
+      <h3 style="font-size: 1.35rem; color: var(--espresso); margin-bottom: 0.5rem; font-weight: 800;">Registry Ready (0 Active Reports)</h3>
+      <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 520px; margin: 0 auto 1.5rem auto; line-height: 1.6;">
+        No lost or found items are currently logged in the registry. Be the first citizen or security officer to submit a report.
+      </p>
+      <div style="display: flex; gap: 0.85rem; justify-content: center; flex-wrap: wrap;">
+        <a href="{{ url_for('report', type='lost') }}" class="btn btn-lost">🔴 Report Lost Item</a>
+        <a href="{{ url_for('report', type='found') }}" class="btn btn-found">🟢 Report Found Item</a>
+      </div>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

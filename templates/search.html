@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Search Belongings - Lost &amp; Found Hub{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem;">
+  <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--text-main);">Search &amp; Filter Reports</h1>
+  <p style="color: var(--text-muted); font-size: 0.95rem;">
+    Look up lost or found items by keyword, location, date, or category taxonomy.
+  </p>
+</div>
+
+<!-- Search & Filter Card -->
+<div class="search-card">
+  <form method="GET" action="{{ url_for('search') }}" class="search-form">
+    <input 
+      type="text" 
+      name="q" 
+      class="form-control" 
+      placeholder="Search item title, description, keywords..." 
+      value="{{ q }}"
+    >
+
+    <select name="type" class="form-select">
+      <option value="all" {% if current_type == 'all' %}selected{% endif %}>All Types</option>
+      <option value="lost" {% if current_type == 'lost' %}selected{% endif %}>Lost Items Only</option>
+      <option value="found" {% if current_type == 'found' %}selected{% endif %}>Found Items Only</option>
+    </select>
+
+    <select name="category" class="form-select">
+      <option value="">All Categories</option>
+      {% for cat in categories %}
+        <option value="{{ cat }}" {% if current_cat == cat %}selected{% endif %}>{{ cat }}</option>
+      {% endfor %}
+    </select>
+
+    <input 
+      type="text" 
+      name="location" 
+      class="form-control" 
+      placeholder="Location (e.g. Metro, Library)..." 
+      value="{{ current_loc }}"
+    >
+
+    <div style="display: flex; gap: 0.5rem;">
+      <button type="submit" class="btn btn-primary">Search</button>
+      <a href="{{ url_for('search') }}" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+
+  <!-- Status Filter Pills -->
+  <div style="display: flex; gap: 0.5rem; margin-top: 1rem; align-items: center; flex-wrap: wrap;">
+    <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Status Filter:</span>
+    <a href="{{ url_for('search', q=q, type=current_type, category=current_cat, location=current_loc, status='all') }}" 
+       class="btn btn-sm {% if current_status == 'all' %}btn-primary{% else %}btn-secondary{% endif %}">
+      All
+    </a>
+    <a href="{{ url_for('search', q=q, type=current_type, category=current_cat, location=current_loc, status='Active') }}" 
+       class="btn btn-sm {% if current_status == 'Active' %}btn-primary{% else %}btn-secondary{% endif %}">
+      Active Only
+    </a>
+    <a href="{{ url_for('search', q=q, type=current_type, category=current_cat, location=current_loc, status='Matched') }}" 
+       class="btn btn-sm {% if current_status == 'Matched' %}btn-primary{% else %}btn-secondary{% endif %}">
+      Matched
+    </a>
+    <a href="{{ url_for('search', q=q, type=current_type, category=current_cat, location=current_loc, status='Resolved') }}" 
+       class="btn btn-sm {% if current_status == 'Resolved' %}btn-primary{% else %}btn-secondary{% endif %}">
+      Resolved
+    </a>
+  </div>
+</div>
+
+<!-- Results Header -->
+<div style="margin-bottom: 1.25rem;">
+  <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--espresso);">
+    Registry Search Results <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 400;">({{ results|length }} found)</span>
+  </h2>
+</div>
+
+<!-- Results Grid -->
+{% if results %}
+  <div class="items-grid">
+    {% for item in results %}
+      <div class="item-card" {% if item.status == 'Resolved' %}style="opacity: 0.8;"{% endif %}>
+        <div class="item-card-img-wrap">
+          {% if item.image_filename %}
+            <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.title }}" class="item-card-img">
+          {% else %}
+            <div class="placeholder-img">
+              {% if 'Electronics' in item.category %}📱{% elif 'Wallet' in item.category %}👛{% elif 'Key' in item.category %}🔑{% elif 'Document' in item.category %}📄{% elif 'Bag' in item.category %}🎒{% else %}📦{% endif %}
+            </div>
+          {% endif %}
+          <div class="item-card-badges">
+            <span class="badge badge-{{ item.report_type }}">{{ item.report_type.upper() }}</span>
+            <span class="badge badge-{{ item.status.lower() }}">{{ item.status.upper() }}</span>
+          </div>
+        </div>
+
+        <div class="item-card-body">
+          <span class="item-card-category">{{ item.category }}</span>
+          <h3 class="item-card-title">{{ item.title }}</h3>
+          <p class="item-card-desc">{{ item.description }}</p>
+
+          <div class="item-meta">
+            <div class="item-meta-row">
+              <span>📍</span>
+              <span><strong>Location:</strong> {{ item.location }}</span>
+            </div>
+            <div class="item-meta-row">
+              <span>🗓️</span>
+              <span><strong>Date:</strong> {{ item.incident_date }}</span>
+            </div>
+          </div>
+
+          <a href="{{ url_for('item_details', item_id=item.id) }}" class="btn btn-secondary" style="width: 100%;">
+            View Details &amp; Matches &rarr;
+          </a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div style="background: #ffffff; padding: 3rem; text-align: center; border-radius: var(--radius); border: 1px dashed var(--border);">
+    <div style="font-size: 3rem; margin-bottom: 0.5rem;">🔍</div>
+    <h3 style="font-weight: 700; margin-bottom: 0.35rem;">No Reports Matched Your Criteria</h3>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Try modifying your keyword, selecting a different category, or clearing filters.</p>
+    <a href="{{ url_for('search') }}" class="btn btn-primary">Clear All Filters</a>
+  </div>
+{% endif %}
+{% endblock %}

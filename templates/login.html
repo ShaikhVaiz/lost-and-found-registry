@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In - Lost &amp; Found Registry{% endblock %}
+
+{% block content %}
+<div class="auth-box animate-fade-in" style="max-width: 520px; margin: 2rem auto;">
+  <div class="auth-header">
+    <div style="font-size: 2.6rem; margin-bottom: 0.5rem;">🏛️</div>
+    <h1>Official Portal Sign In</h1>
+    <p>Public Lost-and-Found Registry &bull; Access your reports &amp; match alerts</p>
+  </div>
+
+  <!-- Role Selector Tabs -->
+  <div class="auth-tabs" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1.75rem; background: var(--bg-parchment); padding: 5px; border-radius: 8px; border: 1.5px solid var(--border-ruled);">
+    <button type="button" id="tabCitizenBtn" class="auth-tab-btn active" onclick="switchLoginTab('citizen')">
+      👤 Citizen Sign In
+    </button>
+    <button type="button" id="tabAdminBtn" class="auth-tab-btn" onclick="switchLoginTab('admin')">
+      🛡️ Admin Sign In
+    </button>
+  </div>
+
+  <!-- Citizen Sign In Form -->
+  <div id="citizenPanel" class="auth-panel">
+    <form method="POST" action="{{ url_for('login') }}">
+      <input type="hidden" name="login_type" value="citizen">
+      
+      <div class="form-group">
+        <label class="form-label" for="citizen_email">Citizen Registered Email *</label>
+        <input 
+          type="email" 
+          id="citizen_email" 
+          name="email" 
+          class="form-control" 
+          placeholder="citizen@example.com" 
+          value="{{ email or '' }}" 
+          required
+          autocomplete="email"
+        >
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+          <label class="form-label" for="citizen_password" style="margin-bottom: 0;">Password *</label>
+          <a href="{{ url_for('forgot_password') }}" style="font-size: 0.84rem; color: var(--chestnut); font-weight: 700; text-decoration: underline;">
+            Forgot Password?
+          </a>
+        </div>
+        <input 
+          type="password" 
+          id="citizen_password" 
+          name="password" 
+          class="form-control" 
+          placeholder="••••••••" 
+          required
+          autocomplete="current-password"
+        >
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.9rem; font-size: 1rem; font-weight: 800;">
+        Sign In as Citizen &rarr;
+      </button>
+
+      <div style="text-align: center; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px dashed var(--border-vintage); font-size: 0.92rem; color: var(--text-muted);">
+        Don't have an account? 
+        <a href="{{ url_for('register') }}" style="color: var(--chestnut); font-weight: 700; text-decoration: underline;">
+          Register as Citizen / Reporter
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Admin Sign In Form -->
+  <div id="adminPanel" class="auth-panel" style="display: none;">
+    <div style="background: #fffcf7; border: 1.5px solid var(--amber-gold); border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 1.35rem; font-size: 0.86rem; color: var(--espresso); line-height: 1.45;">
+      🛡️ <strong>Institutional Admin Portal:</strong> Authenticate with official administrator credentials.
+    </div>
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <input type="hidden" name="login_type" value="admin">
+
+      <div class="form-group">
+        <label class="form-label" for="admin_id">Admin ID *</label>
+        <input 
+          type="text" 
+          id="admin_id" 
+          name="login_id" 
+          class="form-control" 
+          placeholder="admin" 
+          value="admin"
+          required
+          autocomplete="username"
+        >
+        <small style="display: block; margin-top: 0.35rem; color: var(--text-muted); font-size: 0.78rem;">
+          Default Admin ID: <strong>admin</strong> (configurable via <code>ADMIN_ID</code> in <code>.env</code>)
+        </small>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.75rem;">
+        <label class="form-label" for="admin_password">Admin Password *</label>
+        <input 
+          type="password" 
+          id="admin_password" 
+          name="password" 
+          class="form-control" 
+          placeholder="••••••••" 
+          required
+          autocomplete="current-password"
+        >
+        <small style="display: block; margin-top: 0.35rem; color: var(--text-muted); font-size: 0.78rem;">
+          Default Password: <strong>admin123</strong> (configurable via <code>ADMIN_PASSWORD</code> in <code>.env</code>)
+        </small>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.9rem; font-size: 1rem; font-weight: 800; background: var(--espresso);">
+        Sign In as Administrator 🛡️ &rarr;
+      </button>
+
+      <div style="text-align: center; margin-top: 1.25rem; font-size: 0.8rem; color: var(--text-muted);">
+        Clearance restricted to designated lost &amp; found desk supervisors and facility officers.
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchLoginTab(type) {
+  const citizenPanel = document.getElementById('citizenPanel');
+  const adminPanel = document.getElementById('adminPanel');
+  const tabCitizenBtn = document.getElementById('tabCitizenBtn');
+  const tabAdminBtn = document.getElementById('tabAdminBtn');
+
+  if (type === 'admin') {
+    citizenPanel.style.display = 'none';
+    adminPanel.style.display = 'block';
+    tabCitizenBtn.classList.remove('active');
+    tabAdminBtn.classList.add('active');
+    const pwd = document.getElementById('admin_password');
+    if (pwd) pwd.focus();
+  } else {
+    adminPanel.style.display = 'none';
+    citizenPanel.style.display = 'block';
+    tabAdminBtn.classList.remove('active');
+    tabCitizenBtn.classList.add('active');
+    const email = document.getElementById('citizen_email');
+    if (email) email.focus();
+  }
+}
+</script>
+{% endblock %}

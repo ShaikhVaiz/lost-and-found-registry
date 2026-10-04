@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Citizen Dashboard - Lost &amp; Found Registry{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--espresso);">
+      Welcome, {{ current_user.name }}
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      Manage your submitted records, inspect cross-matching alerts, and track recovery statuses.
+    </p>
+  </div>
+
+  <div style="display: flex; gap: 0.75rem;">
+    <a href="{{ url_for('report', type='lost') }}" class="btn btn-lost btn-sm">+ Report Lost</a>
+    <a href="{{ url_for('report', type='found') }}" class="btn btn-found btn-sm">+ Report Found</a>
+    <a href="{{ url_for('search') }}" class="btn btn-secondary btn-sm">Search Items</a>
+  </div>
+</div>
+
+<!-- Match Alert Banner -->
+{% if possible_matches_count > 0 %}
+  <div style="background: #faf4eb; border: 2px solid var(--border-ruled); padding: 1.25rem 1.5rem; border-radius: var(--radius); margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; box-shadow: var(--shadow-sm); animation: antiqueGlow 3s infinite;">
+    <div>
+      <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--chestnut);">
+        ⚡ {{ possible_matches_count }} Possible Match(es) Detected
+      </h3>
+      <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 0.2rem;">
+        The system has identified cross-matches between your reports and public submissions.
+      </p>
+    </div>
+    <a href="{{ url_for('matches_matrix') }}" class="btn btn-primary btn-sm">
+      Inspect Matches Matrix &rarr;
+    </a>
+  </div>
+{% endif %}
+
+<!-- My Lost Reports -->
+<div style="margin-bottom: 2.5rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">
+      🔴 My Lost Belongings ({{ my_lost|length }})
+    </h2>
+    <a href="{{ url_for('report', type='lost') }}" class="btn btn-secondary btn-sm">+ Add Lost Report</a>
+  </div>
+
+  {% if my_lost %}
+    <div class="items-grid">
+      {% for item in my_lost %}
+        <div class="item-card">
+          <div class="item-card-img-wrap">
+            {% if item.image_filename %}
+              <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.title }}" class="item-card-img">
+            {% else %}
+              <div class="placeholder-img">📱</div>
+            {% endif %}
+            <div class="item-card-badges">
+              <span class="badge badge-lost">LOST</span>
+              <span class="badge badge-{{ item.status.lower() }}">{{ item.status.upper() }}</span>
+            </div>
+          </div>
+          <div class="item-card-body">
+            <span class="item-card-category">{{ item.category }}</span>
+            <h3 class="item-card-title">{{ item.title }}</h3>
+            <p class="item-card-desc">{{ item.description }}</p>
+            <div class="item-meta">
+              <div class="item-meta-row">
+                <span>📍</span>
+                <span><strong>Location:</strong> {{ item.location }}</span>
+              </div>
+              <div class="item-meta-row">
+                <span>🗓️</span>
+                <span><strong>Date:</strong> {{ item.incident_date }}</span>
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.4rem; margin-top: auto;">
+              <a href="{{ url_for('item_details', item_id=item.id) }}" class="btn btn-primary btn-sm" style="flex: 1;">
+                View Details
+              </a>
+              <a href="{{ url_for('edit_report', item_id=item.id) }}" class="btn btn-secondary btn-sm" title="Edit">
+                ✏️
+              </a>
+              <form method="POST" action="{{ url_for('delete_report', item_id=item.id) }}" style="display: inline;" onsubmit="return confirm('Delete this report?');">
+                <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--lost);" title="Delete">
+                  🗑️
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div style="background: var(--bg-card); padding: 2.25rem 1.5rem; border-radius: var(--radius); border: 2px dashed var(--border-vintage); text-align: center; color: var(--text-muted); font-size: 0.92rem;">
+      <p style="margin-bottom: 0.75rem;">You have not logged any lost belongings yet.</p>
+      <a href="{{ url_for('report', type='lost') }}" class="btn btn-lost btn-sm">🔴 Report a Lost Item</a>
+    </div>
+  {% endif %}
+</div>
+
+<!-- My Found Reports -->
+<div>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">
+      🟢 Belongings I Found &amp; Reported ({{ my_found|length }})
+    </h2>
+    <a href="{{ url_for('report', type='found') }}" class="btn btn-secondary btn-sm">+ Add Found Report</a>
+  </div>
+
+  {% if my_found %}
+    <div class="items-grid">
+      {% for item in my_found %}
+        <div class="item-card">
+          <div class="item-card-img-wrap">
+            {% if item.image_filename %}
+              <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.title }}" class="item-card-img">
+            {% else %}
+              <div class="placeholder-img">📦</div>
+            {% endif %}
+            <div class="item-card-badges">
+              <span class="badge badge-found">FOUND</span>
+              <span class="badge badge-{{ item.status.lower() }}">{{ item.status.upper() }}</span>
+            </div>
+          </div>
+          <div class="item-card-body">
+            <span class="item-card-category">{{ item.category }}</span>
+            <h3 class="item-card-title">{{ item.title }}</h3>
+            <p class="item-card-desc">{{ item.description }}</p>
+            <div class="item-meta">
+              <div class="item-meta-row">
+                <span>📍</span>
+                <span><strong>Location:</strong> {{ item.location }}</span>
+              </div>
+              <div class="item-meta-row">
+                <span>🗓️</span>
+                <span><strong>Date:</strong> {{ item.incident_date }}</span>
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.4rem; margin-top: auto;">
+              <a href="{{ url_for('item_details', item_id=item.id) }}" class="btn btn-primary btn-sm" style="flex: 1;">
+                View Details
+              </a>
+              <a href="{{ url_for('edit_report', item_id=item.id) }}" class="btn btn-secondary btn-sm" title="Edit">
+                ✏️
+              </a>
+              <form method="POST" action="{{ url_for('delete_report', item_id=item.id) }}" style="display: inline;" onsubmit="return confirm('Delete this report?');">
+                <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--lost);" title="Delete">
+                  🗑️
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div style="background: var(--bg-card); padding: 2.25rem 1.5rem; border-radius: var(--radius); border: 2px dashed var(--border-vintage); text-align: center; color: var(--text-muted); font-size: 0.92rem;">
+      <p style="margin-bottom: 0.75rem;">You have not logged any found belongings yet.</p>
+      <a href="{{ url_for('report', type='found') }}" class="btn btn-found btn-sm">🟢 Report a Found Item</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

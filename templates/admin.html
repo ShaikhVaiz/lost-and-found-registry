@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - Lost &amp; Found Hub{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--espresso);">Administrator Panel</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      Master inventory audit, report moderation, and registered user directory.
+    </p>
+  </div>
+  <a href="{{ url_for('report') }}" class="btn btn-primary btn-sm">+ Log New Property</a>
+</div>
+
+<!-- Stats Overview -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-num">{{ stats.total_reports }}</div>
+    <div class="stat-label">Total Reports</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color: var(--lost-stamp);">{{ stats.lost_active }}</div>
+    <div class="stat-label">Active Lost</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color: var(--found-stamp);">{{ stats.found_active }}</div>
+    <div class="stat-label">Stored Found</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color: var(--resolved-stamp);">{{ stats.resolved }}</div>
+    <div class="stat-label">Resolved</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num">{{ stats.total_users }}</div>
+    <div class="stat-label">Registered Users</div>
+  </div>
+</div>
+
+<!-- Master Reports Table -->
+<div style="margin-bottom: 2.5rem;">
+  <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--espresso); margin-bottom: 1rem;">
+    Master Reports Inventory ({{ reports|length }})
+  </h2>
+  
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Type</th>
+          <th>Title &amp; Category</th>
+          <th>Location</th>
+          <th>Date</th>
+          <th>Contact</th>
+          <th>Status</th>
+          <th>Admin Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reports %}
+          <tr>
+            <td style="font-weight: 700; color: var(--text-muted);">#{{ r.id }}</td>
+            <td>
+              <span class="badge badge-{{ r.report_type }}">{{ r.report_type.upper() }}</span>
+            </td>
+            <td>
+              <div style="font-weight: 700; color: var(--text-main);">{{ r.title }}</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">{{ r.category }}</div>
+            </td>
+            <td>{{ r.location }}</td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">{{ r.incident_date }}</td>
+            <td>
+              <div style="font-size: 0.88rem; font-weight: 600;">{{ r.contact_name }}</div>
+              <div style="font-size: 0.78rem; color: var(--text-muted);">{{ r.contact_info }}</div>
+            </td>
+            <td>
+              <form method="POST" action="{{ url_for('update_status', item_id=r.id) }}" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                <select name="status" class="form-select" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; width: auto;" onchange="this.form.submit()">
+                  <option value="Active" {% if r.status == 'Active' %}selected{% endif %}>Active</option>
+                  <option value="Matched" {% if r.status == 'Matched' %}selected{% endif %}>Matched</option>
+                  <option value="Resolved" {% if r.status == 'Resolved' %}selected{% endif %}>Resolved</option>
+                </select>
+              </form>
+            </td>
+            <td>
+              <div style="display: flex; gap: 0.35rem; align-items: center;">
+                <a href="{{ url_for('item_details', item_id=r.id) }}" class="btn btn-secondary btn-sm" title="View">
+                  View
+                </a>
+                <form method="POST" action="{{ url_for('delete_report', item_id=r.id) }}" style="display: inline;" onsubmit="return confirm('Permanently delete report #{{ r.id }}?');">
+                  <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--lost);" title="Delete">
+                    ✕
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Users Table -->
+<div>
+  <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 1rem;">
+    Registered Users ({{ users|length }})
+  </h2>
+
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>User ID</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Role</th>
+          <th>Joined</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td style="color: var(--text-muted);">USR-{{ u.id }}</td>
+            <td style="font-weight: 700;">{{ u.name }}</td>
+            <td><code>{{ u.email }}</code></td>
+            <td style="color: var(--text-muted);">{{ u.phone or '—' }}</td>
+            <td>
+              <span class="badge {% if u.role == 'admin' %}badge-admin{% else %}badge-active{% endif %}">
+                {{ u.role.upper() }}
+              </span>
+            </td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">{{ u.created_at.strftime('%Y-%m-%d') }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

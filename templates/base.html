@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Lost &amp; Found Registry - Public Spaces{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="{% if current_user.is_authenticated %}body-authenticated{% else %}body-guest{% endif %}">
+
+  {% if current_user.is_authenticated %}
+  <div class="app-layout">
+    <!-- Mobile Top Header (Small devices) -->
+    <header class="mobile-topbar">
+      <a href="{{ url_for('index') }}" class="brand">
+        <span class="brand-crest">🏛️</span>
+        <div class="brand-text">
+          <span class="brand-title">Lost &amp; Found</span>
+        </div>
+      </a>
+      <button type="button" class="mobile-toggle-btn" onclick="toggleSidebar()" aria-label="Toggle Navigation">
+        ☰ Menu
+      </button>
+    </header>
+
+    <!-- Overlay backdrop for mobile -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
+
+    <!-- Left Navigation Sidebar -->
+    <aside class="app-sidebar" id="appSidebar">
+      <div class="sidebar-header">
+        <a href="{{ url_for('index') }}" class="brand">
+          <span class="brand-crest">🏛️</span>
+          <div class="brand-text">
+            <span class="brand-title">Lost &amp; Found</span>
+            <span class="brand-sub">Public Registry</span>
+          </div>
+        </a>
+        <button type="button" class="sidebar-close-btn" onclick="toggleSidebar()" aria-label="Close Sidebar">&times;</button>
+      </div>
+
+      <!-- User Information Capsule -->
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar">
+          {% if current_user.role == 'admin' %}🛡️{% else %}👤{% endif %}
+        </div>
+        <div class="sidebar-user-details">
+          <span class="sidebar-user-name" title="{{ current_user.name }}">{{ current_user.name }}</span>
+          <span class="sidebar-user-role">
+            {% if current_user.role == 'admin' %}
+              <span class="badge badge-admin">ADMINISTRATOR</span>
+            {% else %}
+              <span class="badge badge-active" style="font-size: 0.65rem;">CITIZEN PORTAL</span>
+            {% endif %}
+          </span>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs (Vertical switches on left side) -->
+      <nav class="sidebar-nav">
+        <div class="sidebar-nav-title">WORKSPACE TABS</div>
+
+        <a href="{{ url_for('index') }}" class="sidebar-tab {% if request.endpoint == 'index' %}active{% endif %}">
+          <span class="sidebar-tab-icon">🏛️</span>
+          <span class="sidebar-tab-label">Home Overview</span>
+        </a>
+
+        <a href="{{ url_for('search') }}" class="sidebar-tab {% if request.endpoint == 'search' %}active{% endif %}">
+          <span class="sidebar-tab-icon">🔍</span>
+          <span class="sidebar-tab-label">Search Items</span>
+        </a>
+
+        <a href="{{ url_for('matches_matrix') }}" class="sidebar-tab {% if request.endpoint == 'matches_matrix' %}active{% endif %}">
+          <span class="sidebar-tab-icon">⚡</span>
+          <span class="sidebar-tab-label">Possible Matches</span>
+        </a>
+
+        <a href="{{ url_for('dashboard') }}" class="sidebar-tab {% if request.endpoint == 'dashboard' %}active{% endif %}">
+          <span class="sidebar-tab-icon">📋</span>
+          <span class="sidebar-tab-label">My Dashboard</span>
+        </a>
+
+        <a href="{{ url_for('report') }}" class="sidebar-tab sidebar-tab-action {% if request.endpoint == 'report' %}active{% endif %}">
+          <span class="sidebar-tab-icon">➕</span>
+          <span class="sidebar-tab-label">Report An Item</span>
+        </a>
+
+        {% if current_user.role == 'admin' %}
+          <div class="sidebar-nav-title" style="margin-top: 1.25rem;">ADMINISTRATION</div>
+          <a href="{{ url_for('admin_dashboard') }}" class="sidebar-tab sidebar-tab-admin {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+            <span class="sidebar-tab-icon">🛡️</span>
+            <span class="sidebar-tab-label">Admin Control Panel</span>
+          </a>
+        {% endif %}
+      </nav>
+
+      <!-- Sidebar Bottom Action -->
+      <div class="sidebar-footer">
+        <a href="{{ url_for('logout') }}" class="sidebar-tab sidebar-tab-logout">
+          <span class="sidebar-tab-icon">🚪</span>
+          <span class="sidebar-tab-label">Sign Out</span>
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Area to the Right of Sidebar -->
+    <div class="app-main">
+      <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash-box flash-{{ category }}">
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="app-footer">
+        <p><strong style="font-size: 1.02rem; color: var(--espresso); font-weight: 700;">Digital Lost-and-Found Mechanism for Public Spaces</strong></p>
+        <p style="margin-top: 0.35rem; font-size: 0.82rem; color: var(--text-muted);">
+          Official Institutional Repository for Transit Hubs, Municipal Buildings, Libraries &amp; Educational Campuses
+        </p>
+      </footer>
+    </div>
+  </div>
+
+  {% else %}
+  <!-- Unauthenticated Guest Header (Login, Register, Forgot Password) -->
+  <header class="auth-topbar">
+    <div class="auth-topbar-inner">
+      <a href="{{ url_for('login') }}" class="brand">
+        <span class="brand-crest">🏛️</span>
+        <div class="brand-text">
+          <span class="brand-title">Lost &amp; Found Registry</span>
+          <span class="brand-sub">Official Public Repository</span>
+        </div>
+      </a>
+      <div class="auth-topbar-links">
+        <a href="{{ url_for('login') }}" class="nav-link {% if request.endpoint == 'login' %}active{% endif %}">Sign In</a>
+        <a href="{{ url_for('register') }}" class="btn-nav-primary">Register</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container auth-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash-box flash-{{ category }}">
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {{ self.content() }}
+  </main>
+
+  <footer class="app-footer">
+    <p><strong style="font-size: 1.02rem; color: var(--espresso); font-weight: 700;">Digital Lost-and-Found Mechanism for Public Spaces</strong></p>
+    <p style="margin-top: 0.35rem; font-size: 0.82rem; color: var(--text-muted);">
+      Official Institutional Repository for Transit Hubs, Municipal Buildings, Libraries &amp; Educational Campuses
+    </p>
+  </footer>
+  {% endif %}
+
+  {% block scripts %}{% endblock %}
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.getElementById('appSidebar');
+      const backdrop = document.getElementById('sidebarBackdrop');
+      if (sidebar) sidebar.classList.toggle('open');
+      if (backdrop) backdrop.classList.toggle('open');
+    }
+  </script>
+</body>
+</html>

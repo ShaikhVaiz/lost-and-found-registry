@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if is_edit %}Edit Report{% else %}Report an Item{% endif %} - Lost &amp; Found Hub
+{% endblock %}
+
+{% block content %}
+<div class="form-card">
+  <div style="text-align: center; margin-bottom: 2rem;">
+    <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--text-main);">
+      {% if is_edit %}Edit Belonging Report{% else %}Submit Belonging Report{% endif %}
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.35rem;">
+      Provide accurate details. Our automated matching system will scan for possible matches.
+    </p>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data">
+    {% if not is_edit %}
+      <!-- Type Toggle -->
+      <div class="type-toggle">
+        <div>
+          <input 
+            type="radio" 
+            id="type_lost" 
+            name="report_type" 
+            value="lost" 
+            {% if form_data.get('report_type') == 'lost' or not form_data.get('report_type') %}checked{% endif %}
+          >
+          <label for="type_lost" class="type-lost" style="display: block;">
+            🔴 I Lost Something
+          </label>
+        </div>
+        <div>
+          <input 
+            type="radio" 
+            id="type_found" 
+            name="report_type" 
+            value="found" 
+            {% if form_data.get('report_type') == 'found' %}checked{% endif %}
+          >
+          <label for="type_found" class="type-found" style="display: block;">
+            🟢 I Found Something
+          </label>
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Title -->
+    <div class="form-group">
+      <label class="form-label" for="title">Item Name / Title *</label>
+      <input 
+        type="text" 
+        id="title" 
+        name="title" 
+        class="form-control" 
+        placeholder="e.g. Midnight Blue iPhone 13, Black Fossil Wallet, Dell Charger" 
+        value="{{ form_data.title if is_edit else form_data.get('title', '') }}" 
+        required
+      >
+    </div>
+
+    <!-- Category & Date -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div class="form-group">
+        <label class="form-label" for="category">Category *</label>
+        <select id="category" name="category" class="form-select" required>
+          <option value="">Select Category</option>
+          {% for cat in categories %}
+            <option value="{{ cat }}" 
+              {% if (is_edit and form_data.category == cat) or (not is_edit and form_data.get('category') == cat) %}selected{% endif %}
+            >
+              {{ cat }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="incident_date">Date Lost / Found *</label>
+        <input 
+          type="date" 
+          id="incident_date" 
+          name="incident_date" 
+          class="form-control" 
+          value="{{ form_data.incident_date if is_edit else form_data.get('incident_date', '') }}" 
+          required
+        >
+      </div>
+    </div>
+
+    <!-- Time & Location -->
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem;">
+      <div class="form-group">
+        <label class="form-label" for="incident_time">Approximate Time</label>
+        <input 
+          type="text" 
+          id="incident_time" 
+          name="incident_time" 
+          class="form-control" 
+          placeholder="e.g. 14:30 or Afternoon" 
+          value="{{ form_data.incident_time if is_edit else form_data.get('incident_time', '') }}"
+        >
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="location">Location Where Lost / Found *</label>
+        <input 
+          type="text" 
+          id="location" 
+          name="location" 
+          class="form-control" 
+          placeholder="e.g. Metro Platform 2, Library 2nd Floor, Campus Lab 3" 
+          value="{{ form_data.location if is_edit else form_data.get('location', '') }}" 
+          required
+        >
+      </div>
+    </div>
+
+    <!-- Description -->
+    <div class="form-group">
+      <label class="form-label" for="description">Detailed Description *</label>
+      <textarea 
+        id="description" 
+        name="description" 
+        rows="3" 
+        class="form-control" 
+        placeholder="Color, brand, model, size, stickers, scratches, case material..." 
+        required
+      >{{ form_data.description if is_edit else form_data.get('description', '') }}</textarea>
+    </div>
+
+    <!-- Identifying Details -->
+    <div class="form-group">
+      <label class="form-label" for="identifying_details">
+        🔒 Confidential Identifying Details (Ownership Proof)
+      </label>
+      <textarea 
+        id="identifying_details" 
+        name="identifying_details" 
+        rows="2" 
+        class="form-control" 
+        placeholder="Lockscreen wallpaper, serial numbers, cards inside, private markings..."
+      >{{ form_data.identifying_details if is_edit else form_data.get('identifying_details', '') }}</textarea>
+      <span style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; display: block;">
+        Helps verify the claimant is the true owner before returning the item.
+      </span>
+    </div>
+
+    <!-- Photograph Upload -->
+    <div class="form-group">
+      <label class="form-label" for="photo">Photograph of Item (Optional)</label>
+      <input 
+        type="file" 
+        id="photo" 
+        name="photo" 
+        class="form-control" 
+        accept="image/*"
+        onchange="previewImage(event)"
+      >
+      <div id="preview-wrap" style="margin-top: 0.75rem; display: none;">
+        <img id="image-preview" src="#" alt="Preview" style="max-height: 180px; border-radius: 8px; border: 1px solid var(--border);">
+      </div>
+      {% if is_edit and form_data.image_filename %}
+        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+          Current image: <code>{{ form_data.image_filename }}</code> (uploading a new photo replaces it)
+        </div>
+      {% endif %}
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid var(--border); margin: 1.5rem 0;">
+
+    <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.75rem;">
+      👤 Contact Information
+    </h3>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div class="form-group">
+        <label class="form-label" for="contact_name">Your Name *</label>
+        <input 
+          type="text" 
+          id="contact_name" 
+          name="contact_name" 
+          class="form-control" 
+          placeholder="e.g. Aarav Sharma" 
+          value="{{ form_data.contact_name if is_edit else form_data.get('contact_name', '') }}" 
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="contact_info">Phone Number or Email *</label>
+        <input 
+          type="text" 
+          id="contact_info" 
+          name="contact_info" 
+          class="form-control" 
+          placeholder="e.g. +91 9876543210 or user@email.com" 
+          value="{{ form_data.contact_info if is_edit else form_data.get('contact_info', '') }}" 
+          required
+        >
+      </div>
+    </div>
+
+    <div style="margin-top: 1.75rem;">
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
+        {% if is_edit %}Save Changes &rarr;{% else %}Submit Report &amp; Check Possible Matches &rarr;{% endif %}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function previewImage(event) {
+    const input = event.target;
+    const previewWrap = document.getElementById('preview-wrap');
+    const previewImg = document.getElementById('image-preview');
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        previewImg.src = e.target.result;
+        previewWrap.style.display = 'block';
+      };
+      reader.readAsDataURL(input.files[0]);
+    } else {
+      previewWrap.style.display = 'none';
+    }
+  }
+
+  // Set today's date if empty and not editing
+  window.addEventListener('DOMContentLoaded', () => {
+    const dateInput = document.getElementById('incident_date');
+    if (!dateInput.value) {
+      const today = new Date().toISOString().split('T')[0];
+      dateInput.value = today;
+    }
+  });
+</script>
+{% endblock %}

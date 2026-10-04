@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Possible Matches Matrix - Lost &amp; Found Hub{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+  <span class="hero-seal" style="margin-bottom: 0.5rem;">Automated Cross-Correlation</span>
+  <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--espresso);">Possible Matches Matrix</h1>
+  <p style="color: var(--text-muted); font-size: 0.95rem;">
+    Our matching mechanism continuously checks open reports by evaluating category taxonomy (35%), keyword overlap (35%), location proximity (20%), and date proximity (10%).
+  </p>
+</div>
+
+{% if pairs %}
+  <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+    {% for p in pairs %}
+      <div style="background: var(--bg-card); border: 2px solid var(--border-ruled); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border-vintage); padding-bottom: 0.85rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-size: 1.15rem; font-weight: 800; color: var(--espresso);">
+              Probable Match Pair
+            </span>
+            <span class="badge" style="background: #faf4eb; color: var(--chestnut); border: 1px solid var(--border-ruled); font-size: 0.85rem; font-weight: 800;">
+              Correlation: {{ p.score }}%
+            </span>
+          </div>
+
+          <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+            {% for r in p.reasons %}
+              <span class="reason-tag">✓ {{ r }}</span>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+          <!-- Lost Item Side -->
+          <div style="background: var(--lost-bg); border: 1px solid var(--lost-border); border-radius: 8px; padding: 1.15rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.35rem;">
+              <span class="badge badge-lost">Reported Lost</span>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">#{{ p.lost.id }}</span>
+            </div>
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">{{ p.lost.title }}</h3>
+            <p style="font-size: 0.88rem; color: var(--text-sub); margin-bottom: 0.75rem;">{{ p.lost.description }}</p>
+            <div style="font-size: 0.82rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem;">
+              <div>📍 <strong>Location:</strong> {{ p.lost.location }}</div>
+              <div>🗓️ <strong>Date:</strong> {{ p.lost.incident_date }}</div>
+              <div>👤 <strong>Contact:</strong> {{ p.lost.contact_name }} ({{ p.lost.contact_info }})</div>
+            </div>
+            <div style="margin-top: 1rem;">
+              <a href="{{ url_for('item_details', item_id=p.lost.id) }}" class="btn btn-secondary btn-sm" style="width: 100%;">
+                View Lost Report &rarr;
+              </a>
+            </div>
+          </div>
+
+          <!-- Found Item Side -->
+          <div style="background: var(--found-bg); border: 1px solid var(--found-border); border-radius: 8px; padding: 1.15rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.35rem;">
+              <span class="badge badge-found">Reported Found</span>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">#{{ p.found.id }}</span>
+            </div>
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">{{ p.found.title }}</h3>
+            <p style="font-size: 0.88rem; color: var(--text-sub); margin-bottom: 0.75rem;">{{ p.found.description }}</p>
+            <div style="font-size: 0.82rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem;">
+              <div>📍 <strong>Location:</strong> {{ p.found.location }}</div>
+              <div>🗓️ <strong>Date:</strong> {{ p.found.incident_date }}</div>
+              <div>👤 <strong>Contact:</strong> {{ p.found.contact_name }} ({{ p.found.contact_info }})</div>
+            </div>
+            <div style="margin-top: 1rem;">
+              <a href="{{ url_for('item_details', item_id=p.found.id) }}" class="btn btn-secondary btn-sm" style="width: 100%;">
+                View Found Report &rarr;
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div style="background: #ffffff; padding: 3rem; text-align: center; border-radius: var(--radius); border: 1px dashed var(--border);">
+    <div style="font-size: 3rem; margin-bottom: 0.5rem;">⚡</div>
+    <h3 style="font-weight: 700; margin-bottom: 0.35rem;">No Active Possible Matches Right Now</h3>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">When corresponding lost and found items are logged, they will appear here automatically.</p>
+    <a href="{{ url_for('report') }}" class="btn btn-primary">+ Submit a Report</a>
+  </div>
+{% endif %}
+{% endblock %}

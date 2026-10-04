@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Verify OTP &amp; Reset Password - Lost &amp; Found Registry{% endblock %}
+
+{% block content %}
+<div class="auth-box">
+  <div class="auth-header">
+    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📬</div>
+    <h1>Verify Code &amp; Reset Password</h1>
+    <p>Enter the 6-digit verification code sent to <strong>{{ email }}</strong>.</p>
+  </div>
+
+  <form method="POST" action="{{ url_for('verify_otp') }}">
+    <div class="form-group">
+      <label class="form-label" for="otp">6-Digit Verification Code (OTP) *</label>
+      <input 
+        type="text" 
+        id="otp" 
+        name="otp" 
+        class="form-control" 
+        placeholder="123456" 
+        maxlength="6"
+        pattern="[0-9]{6}"
+        style="font-size: 1.4rem; letter-spacing: 6px; text-align: center; font-weight: 800; font-family: monospace;"
+        required
+        autocomplete="one-time-code"
+      >
+      <small style="color: var(--text-muted); font-size: 0.8rem; display: block; margin-top: 0.35rem; text-align: center;">
+        Valid for 10 minutes. Check your inbox and spam folder.
+      </small>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="new_password">New Password *</label>
+      <input 
+        type="password" 
+        id="new_password" 
+        name="new_password" 
+        class="form-control" 
+        placeholder="At least 6 characters" 
+        required
+        autocomplete="new-password"
+      >
+    </div>
+
+    <div class="form-group" style="margin-bottom: 1.75rem;">
+      <label class="form-label" for="confirm_password">Confirm New Password *</label>
+      <input 
+        type="password" 
+        id="confirm_password" 
+        name="confirm_password" 
+        class="form-control" 
+        placeholder="Re-enter new password" 
+        required
+        autocomplete="new-password"
+      >
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
+      Reset Password &rarr;
+    </button>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px dashed var(--border-vintage); font-size: 0.88rem;">
+      <a href="{{ url_for('resend_otp') }}" style="color: var(--chestnut); font-weight: 700; text-decoration: underline;">
+        🔄 Resend Code
+      </a>
+      <a href="{{ url_for('login') }}" style="color: var(--text-muted); text-decoration: underline;">
+        Cancel &amp; Sign In
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}
