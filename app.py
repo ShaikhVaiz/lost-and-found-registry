@@ -1005,7 +1005,7 @@ def internal_error(error):
     import traceback
     tb = traceback.format_exc()
     print(f">> 500 Internal Error: {error}\n{tb}")
-    return "<h3>500 Internal Server Error</h3><p>Something went wrong. Please <a href='/'>return to the registry portal</a>.</p>", 500
+    return f"<h3>500 Internal Server Error</h3><pre style='white-space:pre-wrap;font-family:monospace;'>{error}\n\n{tb}</pre>", 500
 
 # ==============================================================================
 # Application Entry Point
