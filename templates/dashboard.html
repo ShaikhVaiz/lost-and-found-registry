@@ -55,7 +55,8 @@
               {% if item.image_filename.startswith('data:') or item.image_filename.startswith('http') %}
                 <img src="{{ item.image_filename }}" alt="{{ item.title }}" class="item-card-img">
               {% else %}
-                <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.title }}" class="item-card-img" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'placeholder-img\'>📱</div>';">
+                <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.title }}" class="item-card-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="placeholder-img" style="display: none;">📱</div>
               {% endif %}
             {% else %}
               <div class="placeholder-img">📱</div>
@@ -122,7 +123,8 @@
               {% if item.image_filename.startswith('data:') or item.image_filename.startswith('http') %}
                 <img src="{{ item.image_filename }}" alt="{{ item.title }}" class="item-card-img">
               {% else %}
-                <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.title }}" class="item-card-img" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'placeholder-img\'>📦</div>';">
+                <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.title }}" class="item-card-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="placeholder-img" style="display: none;">📦</div>
               {% endif %}
             {% else %}
               <div class="placeholder-img">📦</div>

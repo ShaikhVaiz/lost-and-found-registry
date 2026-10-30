@@ -25,7 +25,10 @@
           {% if item.image_filename.startswith('data:') or item.image_filename.startswith('http') %}
             <img src="{{ item.image_filename }}" alt="{{ item.title }}" class="detail-img">
           {% else %}
-            <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.title }}" class="detail-img" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\'font-size: 5rem;\'>{% if \'Electronics\' in item.category %}📱{% elif \'Wallet\' in item.category %}👛{% elif \'Key\' in item.category %}🔑{% elif \'Document\' in item.category %}📄{% elif \'Bag\' in item.category %}🎒{% else %}📦{% endif %}</div>';">
+            <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.title }}" class="detail-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div style="font-size: 5rem; display: none;">
+              {% if 'Electronics' in item.category %}📱{% elif 'Wallet' in item.category %}👛{% elif 'Key' in item.category %}🔑{% elif 'Document' in item.category %}📄{% elif 'Bag' in item.category %}🎒{% else %}📦{% endif %}
+            </div>
           {% endif %}
         {% else %}
           <div style="font-size: 5rem;">
