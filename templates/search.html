@@ -48,32 +48,47 @@
     </div>
   </form>
 
-  <!-- Status Filter Pills -->
-  <div style="display: flex; gap: 0.5rem; margin-top: 1rem; align-items: center; flex-wrap: wrap;">
-    <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Status Filter:</span>
-    <a href="{{ url_for('search', q=q, type=current_type, category=current_cat, location=current_loc, status='all') }}" 
-       class="btn btn-sm {% if current_status == 'all' %}btn-primary{% else %}btn-secondary{% endif %}">
-      All
-    </a>
-    <a href="{{ url_for('search', q=q, type=current_type, category=current_cat, location=current_loc, status='Active') }}" 
-       class="btn btn-sm {% if current_status == 'Active' %}btn-primary{% else %}btn-secondary{% endif %}">
-      Active Only
-    </a>
-    <a href="{{ url_for('search', q=q, type=current_type, category=current_cat, location=current_loc, status='Matched') }}" 
-       class="btn btn-sm {% if current_status == 'Matched' %}btn-primary{% else %}btn-secondary{% endif %}">
-      Matched
-    </a>
-    <a href="{{ url_for('search', q=q, type=current_type, category=current_cat, location=current_loc, status='Resolved') }}" 
-       class="btn btn-sm {% if current_status == 'Resolved' %}btn-primary{% else %}btn-secondary{% endif %}">
-      Resolved
-    </a>
+  <!-- Status & Owner Filter Pills -->
+  <div style="display: flex; gap: 0.75rem; margin-top: 1rem; align-items: center; flex-wrap: wrap;">
+    <div style="display: inline-flex; gap: 0.35rem; align-items: center;">
+      <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">View:</span>
+      <a href="{{ url_for('search', q=q, type=current_type, category=current_cat, location=current_loc, status=current_status, owner='all') }}" 
+         class="btn btn-sm {% if current_owner != 'me' %}btn-primary{% else %}btn-secondary{% endif %}">
+        🌐 All Community Reports
+      </a>
+      <a href="{{ url_for('search', q=q, type=current_type, category=current_cat, location=current_loc, status=current_status, owner='me') }}" 
+         class="btn btn-sm {% if current_owner == 'me' %}btn-primary{% else %}btn-secondary{% endif %}">
+        👤 My Submissions Only
+      </a>
+    </div>
+
+    <div style="display: inline-flex; gap: 0.35rem; align-items: center;">
+      <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Status:</span>
+      <a href="{{ url_for('search', q=q, type=current_type, category=current_cat, location=current_loc, status='all', owner=current_owner) }}" 
+         class="btn btn-sm {% if current_status == 'all' %}btn-primary{% else %}btn-secondary{% endif %}">
+        All
+      </a>
+      <a href="{{ url_for('search', q=q, type=current_type, category=current_cat, location=current_loc, status='Active', owner=current_owner) }}" 
+         class="btn btn-sm {% if current_status == 'Active' %}btn-primary{% else %}btn-secondary{% endif %}">
+        Active Only
+      </a>
+      <a href="{{ url_for('search', q=q, type=current_type, category=current_cat, location=current_loc, status='Matched', owner=current_owner) }}" 
+         class="btn btn-sm {% if current_status == 'Matched' %}btn-primary{% else %}btn-secondary{% endif %}">
+        Matched
+      </a>
+      <a href="{{ url_for('search', q=q, type=current_type, category=current_cat, location=current_loc, status='Resolved', owner=current_owner) }}" 
+         class="btn btn-sm {% if current_status == 'Resolved' %}btn-primary{% else %}btn-secondary{% endif %}">
+        Resolved
+      </a>
+    </div>
   </div>
 </div>
 
 <!-- Results Header -->
 <div style="margin-bottom: 1.25rem;">
   <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--espresso);">
-    Registry Search Results <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 400;">({{ results|length }} found)</span>
+    {% if current_owner == 'me' %}My Personal Reports{% else %}Registry Search Results{% endif %} 
+    <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 400;">({{ results|length }} found)</span>
   </h2>
 </div>
 
@@ -84,7 +99,11 @@
       <div class="item-card" {% if item.status == 'Resolved' %}style="opacity: 0.8;"{% endif %}>
         <div class="item-card-img-wrap">
           {% if item.image_filename %}
-            <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.title }}" class="item-card-img">
+            {% if item.image_filename.startswith('data:') or item.image_filename.startswith('http') %}
+              <img src="{{ item.image_filename }}" alt="{{ item.title }}" class="item-card-img">
+            {% else %}
+              <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.title }}" class="item-card-img" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'placeholder-img\'>{% if \'Electronics\' in item.category %}📱{% elif \'Wallet\' in item.category %}👛{% elif \'Key\' in item.category %}🔑{% elif \'Document\' in item.category %}📄{% elif \'Bag\' in item.category %}🎒{% else %}📦{% endif %}</div>';">
+            {% endif %}
           {% else %}
             <div class="placeholder-img">
               {% if 'Electronics' in item.category %}📱{% elif 'Wallet' in item.category %}👛{% elif 'Key' in item.category %}🔑{% elif 'Document' in item.category %}📄{% elif 'Bag' in item.category %}🎒{% else %}📦{% endif %}
@@ -93,6 +112,9 @@
           <div class="item-card-badges">
             <span class="badge badge-{{ item.report_type }}">{{ item.report_type.upper() }}</span>
             <span class="badge badge-{{ item.status.lower() }}">{{ item.status.upper() }}</span>
+            {% if current_user.is_authenticated and item.user_id == current_user.id %}
+              <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;">YOUR REPORT</span>
+            {% endif %}
           </div>
         </div>
 

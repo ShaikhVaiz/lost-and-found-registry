@@ -2,6 +2,7 @@ import os
 import re
 import random
 import json
+import base64
 import urllib.request
 import urllib.error
 import urllib.parse
@@ -151,7 +152,7 @@ class Report(db.Model):
     incident_date = db.Column(db.String(20), nullable=False) # YYYY-MM-DD
     incident_time = db.Column(db.String(30), nullable=True) # approximate time or HH:MM
     location = db.Column(db.String(150), nullable=False, index=True)
-    image_filename = db.Column(db.String(255), nullable=True)
+    image_filename = db.Column(db.Text, nullable=True)
     contact_name = db.Column(db.String(100), nullable=False)
     contact_info = db.Column(db.String(120), nullable=False)
     identifying_details = db.Column(db.Text, nullable=True)
@@ -743,19 +744,43 @@ def report():
             flash("Please fill in all mandatory fields marked with *", "danger")
             return render_template("report.html", categories=CATEGORIES, form_data=request.form)
 
+        # Server-side deduplication check: prevent accidental double-click duplicates within 60s
+        recent_dup = Report.query.filter_by(
+            user_id=session.get("user_id"),
+            title=title,
+            category=category,
+            incident_date=incident_date,
+            location=location,
+            report_type=report_type
+        ).order_by(Report.id.desc()).first()
+
+        if recent_dup:
+            diff_secs = (datetime.now() - recent_dup.created_at).total_seconds() if recent_dup.created_at else 999
+            if diff_secs < 60:
+                flash(f"Duplicate submission prevented. Your report for '{title}' is already recorded in the registry.", "info")
+                return redirect(url_for("item_details", item_id=recent_dup.id))
+
         image_filename = None
         if "photo" in request.files:
             file = request.files["photo"]
             if file and file.filename and allowed_file(file.filename):
-                fname = secure_filename(file.filename)
-                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-                image_filename = f"{timestamp}_{fname}"
-                try:
-                    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
-                    file.save(os.path.join(app.config["UPLOAD_FOLDER"], image_filename))
-                except Exception as e_up:
-                    print(f">> File upload notice: {e_up}")
-                    image_filename = None
+                file_bytes = file.read()
+                if len(file_bytes) > 0 and len(file_bytes) <= 4 * 1024 * 1024:
+                    # Convert to Base64 Data URI for permanent database storage on serverless/cloud
+                    ext = file.filename.rsplit(".", 1)[1].lower()
+                    mime_type = f"image/{ext}" if ext != "jpg" else "image/jpeg"
+                    b64_str = base64.b64encode(file_bytes).decode("utf-8")
+                    image_filename = f"data:{mime_type};base64,{b64_str}"
+                else:
+                    fname = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                    image_filename = f"{timestamp}_{fname}"
+                    try:
+                        os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+                        with open(os.path.join(app.config["UPLOAD_FOLDER"], image_filename), "wb") as f_out:
+                            f_out.write(file_bytes)
+                    except Exception as e_up:
+                        print(f">> File upload notice: {e_up}")
 
         new_report = Report(
             user_id=session.get("user_id"),
@@ -795,8 +820,12 @@ def search():
     cat = request.args.get("category", "").strip()
     loc = request.args.get("location", "").strip()
     status_filter = request.args.get("status", "all").strip().title()
+    filter_owner = request.args.get("owner", "all").strip().lower()
 
     q = Report.query
+
+    if filter_owner == "me":
+        q = q.filter_by(user_id=session.get("user_id"))
 
     if query:
         q = q.filter(
@@ -829,7 +858,8 @@ def search():
         current_type=r_type,
         current_cat=cat,
         current_loc=loc,
-        current_status=status_filter
+        current_status=status_filter,
+        current_owner=filter_owner
     )
 
 def get_report_or_404(item_id):
@@ -869,14 +899,22 @@ def edit_report(item_id):
         if "photo" in request.files:
             file = request.files["photo"]
             if file and file.filename and allowed_file(file.filename):
-                fname = secure_filename(file.filename)
-                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-                try:
-                    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
-                    file.save(os.path.join(app.config["UPLOAD_FOLDER"], f"{timestamp}_{fname}"))
-                    report.image_filename = f"{timestamp}_{fname}"
-                except Exception as e_up:
-                    print(f">> File upload notice: {e_up}")
+                file_bytes = file.read()
+                if len(file_bytes) > 0 and len(file_bytes) <= 4 * 1024 * 1024:
+                    ext = file.filename.rsplit(".", 1)[1].lower()
+                    mime_type = f"image/{ext}" if ext != "jpg" else "image/jpeg"
+                    b64_str = base64.b64encode(file_bytes).decode("utf-8")
+                    report.image_filename = f"data:{mime_type};base64,{b64_str}"
+                else:
+                    fname = secure_filename(file.filename)
+                    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                    try:
+                        os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+                        with open(os.path.join(app.config["UPLOAD_FOLDER"], f"{timestamp}_{fname}"), "wb") as f_out:
+                            f_out.write(file_bytes)
+                        report.image_filename = f"{timestamp}_{fname}"
+                    except Exception as e_up:
+                        print(f">> File upload notice: {e_up}")
 
         db.session.commit()
         flash("Report updated successfully.", "success")

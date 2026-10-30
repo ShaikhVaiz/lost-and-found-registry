@@ -22,7 +22,11 @@
     <div>
       <div class="detail-img-box">
         {% if item.image_filename %}
-          <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.title }}" class="detail-img">
+          {% if item.image_filename.startswith('data:') or item.image_filename.startswith('http') %}
+            <img src="{{ item.image_filename }}" alt="{{ item.title }}" class="detail-img">
+          {% else %}
+            <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="{{ item.title }}" class="detail-img" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\'font-size: 5rem;\'>{% if \'Electronics\' in item.category %}📱{% elif \'Wallet\' in item.category %}👛{% elif \'Key\' in item.category %}🔑{% elif \'Document\' in item.category %}📄{% elif \'Bag\' in item.category %}🎒{% else %}📦{% endif %}</div>';">
+          {% endif %}
         {% else %}
           <div style="font-size: 5rem;">
             {% if 'Electronics' in item.category %}📱{% elif 'Wallet' in item.category %}👛{% elif 'Key' in item.category %}🔑{% elif 'Document' in item.category %}📄{% elif 'Bag' in item.category %}🎒{% else %}📦{% endif %}
@@ -101,9 +105,16 @@
           <h4 style="font-size: 0.92rem; font-weight: 700; color: #854d0e; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.4rem;">
             🔒 Confidential Identifying Details (Ownership Proof)
           </h4>
-          <p style="color: #713f12; font-size: 0.9rem; line-height: 1.5;">
-            {{ item.identifying_details }}
-          </p>
+          {% if current_user.is_authenticated and (item.user_id == current_user.id or current_user.role == 'admin') %}
+            <p style="color: #713f12; font-size: 0.9rem; line-height: 1.5;">
+              {{ item.identifying_details }}
+            </p>
+            <span style="font-size: 0.75rem; color: #854d0e;">(Visible only to you as the reporter and system administrators)</span>
+          {% else %}
+            <p style="color: #854d0e; font-size: 0.88rem; font-style: italic; line-height: 1.4;">
+              Protected and shielded from public view to prevent fraudulent claims. When claiming this item, describe your confidential ownership marks to the security desk / administrator.
+            </p>
+          {% endif %}
         </div>
       {% endif %}
 
@@ -111,8 +122,16 @@
         <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">
           👤 Contact &amp; Recovery Desk
         </h4>
-        <div><strong>Contact Person:</strong> {{ item.contact_name }}</div>
-        <div><strong>Phone / Email:</strong> {{ item.contact_info }}</div>
+        {% if current_user.is_authenticated and (item.user_id == current_user.id or current_user.role == 'admin') %}
+          <div><strong>Contact Person:</strong> {{ item.contact_name }}</div>
+          <div><strong>Phone / Email:</strong> {{ item.contact_info }}</div>
+        {% else %}
+          <div><strong>Reported By:</strong> {{ item.contact_name[:2] }}***{{ item.contact_name[-1:] if item.contact_name|length > 2 else '' }}</div>
+          <div><strong>Contact Info:</strong> <span class="badge badge-active" style="font-size: 0.75rem;">Shielded for Citizen Privacy</span></div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.4rem;">
+            Direct contact information is protected to prevent harassment. Contact the facility security desk or submit a match claim to coordinate property recovery.
+          </p>
+        {% endif %}
       </div>
     </div>
   </div>

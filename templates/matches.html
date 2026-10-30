@@ -44,7 +44,11 @@
             <div style="font-size: 0.82rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem;">
               <div>📍 <strong>Location:</strong> {{ p.lost.location }}</div>
               <div>🗓️ <strong>Date:</strong> {{ p.lost.incident_date }}</div>
-              <div>👤 <strong>Contact:</strong> {{ p.lost.contact_name }} ({{ p.lost.contact_info }})</div>
+              {% if current_user.is_authenticated and (p.lost.user_id == current_user.id or current_user.role == 'admin') %}
+                <div>👤 <strong>Contact:</strong> {{ p.lost.contact_name }} ({{ p.lost.contact_info }})</div>
+              {% else %}
+                <div>👤 <strong>Reported By:</strong> {{ p.lost.contact_name[:2] }}*** <span class="badge badge-active" style="font-size: 0.7rem;">Shielded</span></div>
+              {% endif %}
             </div>
             <div style="margin-top: 1rem;">
               <a href="{{ url_for('item_details', item_id=p.lost.id) }}" class="btn btn-secondary btn-sm" style="width: 100%;">
@@ -64,7 +68,11 @@
             <div style="font-size: 0.82rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem;">
               <div>📍 <strong>Location:</strong> {{ p.found.location }}</div>
               <div>🗓️ <strong>Date:</strong> {{ p.found.incident_date }}</div>
-              <div>👤 <strong>Contact:</strong> {{ p.found.contact_name }} ({{ p.found.contact_info }})</div>
+              {% if current_user.is_authenticated and (p.found.user_id == current_user.id or current_user.role == 'admin') %}
+                <div>👤 <strong>Contact:</strong> {{ p.found.contact_name }} ({{ p.found.contact_info }})</div>
+              {% else %}
+                <div>👤 <strong>Reported By:</strong> {{ p.found.contact_name[:2] }}*** <span class="badge badge-active" style="font-size: 0.7rem;">Shielded</span></div>
+              {% endif %}
             </div>
             <div style="margin-top: 1rem;">
               <a href="{{ url_for('item_details', item_id=p.found.id) }}" class="btn btn-secondary btn-sm" style="width: 100%;">
