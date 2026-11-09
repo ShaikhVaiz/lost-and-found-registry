@@ -5,7 +5,7 @@ import io
 os.environ["DISABLE_SQLALCHEMY_CEXT"] = "1"
 
 from werkzeug.security import generate_password_hash
-from app import app, db, User, Report, PasswordReset, calculate_match_score
+from app import app, db, User, Report, PasswordReset, calculate_match_score, ADMIN_ID, ADMIN_PASSWORD
 
 class DigitalLostAndFoundTestSuite(unittest.TestCase):
     def setUp(self):
@@ -42,8 +42,8 @@ class DigitalLostAndFoundTestSuite(unittest.TestCase):
 
     def login_admin(self):
         return self.client.post("/login", data={
-            "login_id": "admin",
-            "password": "admin123"
+            "login_id": ADMIN_ID,
+            "password": ADMIN_PASSWORD
         }, follow_redirects=True)
 
     def test_a_b_portal_entry_and_authentication_flow(self):
@@ -370,6 +370,63 @@ class DigitalLostAndFoundTestSuite(unittest.TestCase):
         }, follow_redirects=True)
         self.assertEqual(res_new_login.status_code, 200)
         self.assertIn(b"Aarav Sharma", res_new_login.data)
+
+    def test_v_public_user_cannot_register_as_admin(self):
+        """V: Verify that public registration rejects user-submitted admin role and always creates normal user."""
+        with app.app_context():
+            u_prev = User.query.filter_by(email="malicious@example.com").first()
+            if u_prev:
+                db.session.delete(u_prev)
+                db.session.commit()
+
+        malicious_data = {
+            "name": "Malicious User",
+            "email": "malicious@example.com",
+            "password": "attackpass123",
+            "phone": "+91 98888 77777",
+            "role": "admin"  # Tampered form field attempting privilege escalation
+        }
+        res = self.client.post("/register", data=malicious_data, follow_redirects=True)
+        self.assertEqual(res.status_code, 200)
+
+        with app.app_context():
+            user = User.query.filter_by(email="malicious@example.com").first()
+            self.assertIsNotNone(user)
+            # Role must strictly be 'user', never 'admin'
+            self.assertEqual(user.role, "user")
+            self.assertNotEqual(user.role, "admin")
+
+        # Attempt to access protected admin endpoint with this newly registered account
+        admin_res = self.client.get("/admin", follow_redirects=False)
+        self.assertIn(admin_res.status_code, [302, 403])
+        if admin_res.status_code == 302:
+            self.assertNotIn("/admin", admin_res.headers.get("Location", ""))
+
+        # Clean up test user
+        with app.app_context():
+            u_cleanup = User.query.filter_by(email="malicious@example.com").first()
+            if u_cleanup:
+                db.session.delete(u_cleanup)
+                db.session.commit()
+
+    def test_w_environment_configuration_required(self):
+        """W: Verify that missing SECRET_KEY or ADMIN credentials raises RuntimeError without insecure fallbacks."""
+        import subprocess, sys
+        code = """
+import os
+os.environ['SECRET_KEY'] = ''
+os.environ['ADMIN_ID'] = ''
+os.environ['ADMIN_PASSWORD'] = ''
+import app
+"""
+        proc = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            capture_output=True,
+            text=True
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertTrue("RuntimeError" in proc.stderr or "is not configured" in proc.stderr)
 
 if __name__ == "__main__":
     unittest.main()

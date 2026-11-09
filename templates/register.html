@@ -49,14 +49,6 @@
       >
     </div>
 
-    <div class="form-group">
-      <label class="form-label" for="role">Registration Role *</label>
-      <select id="role" name="role" class="form-select">
-        <option value="user" {% if form_data.get('role') != 'admin' %}selected{% endif %}>Citizen / Reporter Account</option>
-        <option value="admin" {% if form_data.get('role') == 'admin' %}selected{% endif %}>Institutional Administrator Account</option>
-      </select>
-    </div>
-
     <div class="form-group" style="margin-bottom: 1.75rem;">
       <label class="form-label" for="password">Password (at least 6 characters) *</label>
       <input 

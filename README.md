@@ -74,15 +74,14 @@ A modern, deployment-ready Flask web application providing a centralized registr
 
 ---
 
-## 🔑 Default Pre-Seeded Accounts
+## 🔑 Account Access & Administrator Configuration
 
-| User Type | Email | Password | Role & Permissions |
-| :--- | :--- | :--- | :--- |
-| **System Admin** | `admin@lostfound.org` | `admin123` | Full inventory moderation, user audit, status override, report deletion |
-| **Normal Citizen** | `aarav@example.com` | `user123` | Personal dashboard, report lost/found items, view match notifications |
-| **New Citizen** | *(Any email)* | *(Any password)* | Register at `/register` |
+| User Type | Access Method | Role & Permissions |
+| :--- | :--- | :--- |
+| **System Administrator** | Configured via `ADMIN_ID` and `ADMIN_PASSWORD` in `.env` | Full inventory moderation, user audit, status override, report deletion |
+| **Citizen User** | Register with genuine email at `/register` | Personal dashboard, report lost/found items, view match notifications |
 
-*Note: System Administrators log in directly with `admin@lostfound.org` / `admin123`. Real citizen users register with their genuine email at `/register` and can reset their password via email OTP at `/forgot-password`.*
+*Note: Administrator credentials must be set in your secure environment (`.env`) via `ADMIN_ID` and `ADMIN_PASSWORD`. Public registration creates standard citizen accounts only. Citizens can reset their password via email OTP at `/forgot-password`.*
 
 ---
 

@@ -50,16 +50,31 @@ class VercelPathMiddleware:
         return self.wsgi_app(environ, start_response)
 
 app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-lostfound-hub-2026-key")
+
+# Secure SECRET_KEY configuration (Strictly required from environment)
+secret_key_env = os.environ.get("SECRET_KEY")
+if not secret_key_env or not secret_key_env.strip():
+    raise RuntimeError(
+        "SECRET_KEY environment variable is not configured. "
+        "A secure SECRET_KEY is required to start the application."
+    )
+app.secret_key = secret_key_env.strip()
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
 # Resend API Key for Email OTP (https://resend.com)
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
 
-# Administrator Credentials (Configurable via .env)
-ADMIN_ID = os.environ.get("ADMIN_ID", "admin").strip()
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123").strip()
+# Administrator Credentials (Strictly required from secure environment)
+admin_id_env = os.environ.get("ADMIN_ID")
+admin_pass_env = os.environ.get("ADMIN_PASSWORD")
+if not admin_id_env or not admin_id_env.strip() or not admin_pass_env or not admin_pass_env.strip():
+    raise RuntimeError(
+        "ADMIN_ID and ADMIN_PASSWORD environment variables are not configured. "
+        "Secure administrator credentials are required to start the application."
+    )
+ADMIN_ID = admin_id_env.strip()
+ADMIN_PASSWORD = admin_pass_env.strip()
 
 # Database configuration: TiDB Cloud (MySQL compatible) with SQLite fallback
 tidb_host = os.environ.get("TIDB_HOST")
@@ -398,7 +413,7 @@ def inject_global_user():
 
 def seed_initial_data():
     admin_email = ADMIN_ID.lower() if "@" in ADMIN_ID else f"{ADMIN_ID.lower()}@lostfound.org"
-    admin_user = User.query.filter((User.role == "admin") | (User.email == admin_email) | (User.email == "admin@lostfound.org")).first()
+    admin_user = User.query.filter((User.role == "admin") | (User.email == admin_email)).first()
     if not admin_user:
         admin_user = User(
             name="System Administrator",
@@ -410,7 +425,7 @@ def seed_initial_data():
         db.session.add(admin_user)
         db.session.commit()
     else:
-        # Keep admin credentials in sync with .env
+        # Keep admin credentials in sync with secure environment
         admin_user.password_hash = generate_password_hash(ADMIN_PASSWORD)
         admin_user.email = admin_email
         db.session.commit()
@@ -494,7 +509,7 @@ def login():
         admin_email = ADMIN_ID.lower() if "@" in ADMIN_ID else f"{ADMIN_ID.lower()}@lostfound.org"
 
         # 1. Administrator Authentication (via configured ADMIN_ID & ADMIN_PASSWORD)
-        if (login_id == ADMIN_ID.lower() or login_id == admin_email or login_id == "admin" or login_id == "admin@lostfound.org") and password == ADMIN_PASSWORD:
+        if (login_id == ADMIN_ID.lower() or login_id == admin_email) and password == ADMIN_PASSWORD:
             admin_user = User.query.filter((User.role == "admin") | (User.email == admin_email)).first()
             if not admin_user:
                 admin_user = User(
@@ -543,9 +558,10 @@ def register():
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         phone = request.form.get("phone", "").strip()
-        role = request.form.get("role", "user").strip().lower()
-        if role not in ("user", "admin"):
-            role = "user"
+
+        # Security Enforcement: Public registration strictly creates standard user accounts.
+        # User-submitted role values are never accepted.
+        role = "user"
 
         if not (name and email and password):
             flash("Please complete all required fields (*).", "warning")
