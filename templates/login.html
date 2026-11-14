@@ -23,6 +23,7 @@
   <!-- Citizen Sign In Form -->
   <div id="citizenPanel" class="auth-panel">
     <form method="POST" action="{{ url_for('login') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="login_type" value="citizen">
       
       <div class="form-group">
@@ -77,6 +78,7 @@
     </div>
 
     <form method="POST" action="{{ url_for('login') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="login_type" value="admin">
 
       <div class="form-group">

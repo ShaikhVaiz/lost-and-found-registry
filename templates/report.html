@@ -16,6 +16,7 @@
   </div>
 
   <form method="POST" enctype="multipart/form-data" id="reportForm" onsubmit="preventDoubleSubmit(event)">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% if not is_edit %}
       <!-- Type Toggle -->
       <div class="type-toggle">

@@ -11,6 +11,7 @@
   </div>
 
   <form method="POST" action="{{ url_for('verify_otp') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
       <label class="form-label" for="otp">6-Digit Verification Code (OTP) *</label>
       <input 

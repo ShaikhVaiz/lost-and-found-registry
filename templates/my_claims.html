@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}My Ownership Claims - Lost &amp; Found Registry{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--espresso);">
+      My Ownership Claims
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      Track verification status and administrative review of claims you filed against found items.
+    </p>
+  </div>
+  <a href="{{ url_for('search', type='found') }}" class="btn btn-secondary btn-sm">
+    🔍 Browse Found Items
+  </a>
+</div>
+
+{% if claims %}
+  <div class="table-responsive" style="margin-bottom: 2rem;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Claim ID</th>
+          <th>Found Item In Custody</th>
+          <th>Linked Lost Report</th>
+          <th>Date Filed</th>
+          <th>Verification Status</th>
+          <th>Administrative Outcome / Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in claims %}
+          <tr>
+            <td style="font-weight: 700;">
+              #{{ c.id }}
+            </td>
+            <td>
+              {% if c.found_report %}
+                <a href="{{ url_for('item_details', item_id=c.found_report.id) }}" style="font-weight: 700; color: var(--text-main); text-decoration: underline;">
+                  {{ c.found_report.title }}
+                </a>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">
+                  📍 {{ c.found_report.location }} &bull; Found: {{ c.found_report.incident_date }}
+                </div>
+              {% else %}
+                <span style="color: var(--text-muted);">Report archived</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if c.lost_report %}
+                <a href="{{ url_for('item_details', item_id=c.lost_report.id) }}" style="font-weight: 600; color: var(--text-main);">
+                  {{ c.lost_report.title }}
+                </a>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">
+                  Report #{{ c.lost_report.id }} &bull; Lost: {{ c.lost_report.incident_date }}
+                </div>
+              {% else %}
+                <span style="color: var(--text-muted);">Report archived</span>
+              {% endif %}
+            </td>
+            <td style="font-size: 0.85rem; color: var(--text-muted);">
+              {{ c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '—' }}
+            </td>
+            <td>
+              {% if c.status == 'Approved' %}
+                <span class="badge badge-resolved" style="font-weight: 700;">APPROVED ✓</span>
+              {% elif c.status == 'Rejected' %}
+                <span class="badge badge-lost" style="font-weight: 700;">REJECTED ✕</span>
+              {% else %}
+                <span class="badge" style="background: #fef08a; color: #854d0e; border: 1px solid #fde047; font-weight: 700;">PENDING REVIEW ⏳</span>
+              {% endif %}
+            </td>
+            <td style="font-size: 0.88rem; max-width: 280px;">
+              {% if c.admin_notes %}
+                <div style="white-space: pre-line; line-height: 1.4;">{{ c.admin_notes }}</div>
+              {% else %}
+                <span style="color: var(--text-muted); font-style: italic;">Awaiting administrator review</span>
+              {% endif %}
+              {% if c.reviewed_at %}
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                  Reviewed on {{ c.reviewed_at.strftime('%Y-%m-%d %H:%M') }}
+                </div>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Status Explanation Banner -->
+  <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+    <strong>Verification Workflow Policy:</strong>
+    <ul style="margin: 0.5rem 0 0 1.25rem; padding: 0;">
+      <li><strong>Pending:</strong> Your submission has been securely filed. An administrator is cross-referencing your answers against the hidden proof registered by the finder.</li>
+      <li><strong>Approved:</strong> Ownership has been positively verified! Both reports are marked Resolved and custody release instructions are coordinated.</li>
+      <li><strong>Rejected:</strong> Submitted details did not sufficiently match the confidential proof. If you discover additional verifiable documentation, contact the administrator to request a claim review.</li>
+    </ul>
+  </div>
+
+{% else %}
+  <div style="background: var(--bg-card); border: 2px dashed var(--border-vintage); border-radius: var(--radius); padding: 3rem 1.5rem; text-align: center; color: var(--text-muted);">
+    <div style="font-size: 3rem; margin-bottom: 0.75rem;">📑</div>
+    <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;">
+      No Ownership Claims Filed Yet
+    </h3>
+    <p style="font-size: 0.92rem; max-width: 480px; margin: 0 auto 1.5rem auto;">
+      If you locate a matching found item in the public registry that belongs to you, open the item details and click <strong>"Submit Ownership Claim"</strong>.
+    </p>
+    <a href="{{ url_for('search', type='found') }}" class="btn btn-primary">
+      🔍 Search Found Property In Custody
+    </a>
+  </div>
+{% endif %}
+{% endblock %}

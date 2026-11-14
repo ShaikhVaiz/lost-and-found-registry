@@ -47,31 +47,100 @@
         </p>
 
         {% if current_user.is_authenticated and (item.user_id == current_user.id or current_user.role == 'admin') %}
-          <form method="POST" action="{{ url_for('update_status', item_id=item.id) }}" style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
-            <select name="status" class="form-select" style="font-size: 0.85rem; padding: 0.45rem;">
-              <option value="Active" {% if item.status == 'Active' %}selected{% endif %}>Active</option>
-              <option value="Matched" {% if item.status == 'Matched' %}selected{% endif %}>Matched</option>
-              <option value="Resolved" {% if item.status == 'Resolved' %}selected{% endif %}>Resolved / Claimed</option>
-            </select>
-            <button type="submit" class="btn btn-secondary btn-sm">Update</button>
-          </form>
+          {% if item.status != 'Resolved' %}
+            <form method="POST" action="{{ url_for('update_status', item_id=item.id) }}" style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <select name="status" class="form-select" style="font-size: 0.85rem; padding: 0.45rem;">
+                <option value="Active" {% if item.status == 'Active' %}selected{% endif %}>Active</option>
+                <option value="Matched" {% if item.status == 'Matched' %}selected{% endif %}>Matched</option>
+              </select>
+              <button type="submit" class="btn btn-secondary btn-sm">Update</button>
+            </form>
+            <div style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.3;">
+              ℹ️ Direct manual resolution is locked. Reports are marked 'Resolved' only via approved ownership claim or audited administrative handover.
+            </div>
+          {% else %}
+            <div style="padding: 0.5rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 0.8rem; color: #166534; margin-bottom: 0.75rem; font-weight: 600;">
+              ✓ Officially Resolved &amp; Closed
+            </div>
+          {% endif %}
 
           <div style="display: flex; gap: 0.5rem;">
             <a href="{{ url_for('edit_report', item_id=item.id) }}" class="btn btn-secondary btn-sm" style="flex: 1;">
               ✏️ Edit Report
             </a>
-            <form method="POST" action="{{ url_for('delete_report', item_id=item.id) }}" style="display: inline;" onsubmit="return confirm('Permanently delete this report?');">
+            <form method="POST" action="{{ url_for('delete_report', item_id=item.id) }}" style="display: inline;" onsubmit="return confirm('Permanently delete this report? (Prohibited if linked to claim history)');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--lost);">
                 🗑️ Delete
               </button>
             </form>
           </div>
+
+          <!-- Exceptional In-Person Handover (Admin Only) -->
+          {% if current_user.role == 'admin' and item.status != 'Resolved' %}
+            <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px dashed var(--border);">
+              <div style="font-size: 0.78rem; font-weight: 700; color: #9a3412; margin-bottom: 0.35rem;">
+                Audited Exceptional In-Person Resolution
+              </div>
+              <form method="POST" action="{{ url_for('exceptional_resolution', item_id=item.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="outcome_reason" class="form-control" placeholder="In-person verification explanation..." required style="font-size: 0.78rem; padding: 0.35rem 0.5rem; margin-bottom: 0.4rem;">
+                <button type="submit" class="btn btn-secondary btn-sm" style="width: 100%; font-size: 0.78rem; font-weight: 600;" onclick="return confirm('Confirm audited in-person handover? This will transition report to Resolved and close related pending claims.');">
+                  🏛️ Resolve In-Person Handover
+                </button>
+              </form>
+            </div>
+          {% endif %}
         {% else %}
           <p style="font-size: 0.82rem; color: var(--text-muted);">
-            Only the report submitter or security administrator can modify this report's status.
+            Report status is managed by the submitter and authorized registry administrators.
           </p>
         {% endif %}
       </div>
+
+      <!-- Claim Submission Widget for Citizen viewing a Found Item -->
+      {% if item.report_type == 'found' %}
+        <div style="margin-top: 1rem; background: var(--bg-card); border: 2px solid var(--border-ruled); border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow-sm);">
+          <div style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; color: var(--chestnut); letter-spacing: 0.5px; margin-bottom: 0.35rem;">
+            Institutional Custody Release
+          </div>
+          {% if item.status == 'Resolved' %}
+            <div style="font-size: 0.85rem; color: #166534; font-weight: 600;">
+              ✓ This item has been verified and returned to its verified owner.
+            </div>
+          {% elif current_user.is_authenticated and item.user_id == current_user.id %}
+            <div style="font-size: 0.82rem; color: var(--text-muted);">
+              You reported finding this item. Citizens claiming ownership will be verified by administrative security.
+            </div>
+          {% elif user_claim %}
+            <div style="font-size: 0.85rem; margin-bottom: 0.5rem;">
+              You filed Claim #{{ user_claim.id }}:
+              {% if user_claim.status == 'Approved' %}
+                <span class="badge badge-resolved">APPROVED ✓</span>
+              {% elif user_claim.status == 'Rejected' %}
+                <span class="badge badge-lost">REJECTED ✕</span>
+              {% else %}
+                <span class="badge" style="background: #fef08a; color: #854d0e;">PENDING REVIEW ⏳</span>
+              {% endif %}
+            </div>
+            <a href="{{ url_for('my_claims') }}" class="btn btn-secondary btn-sm" style="width: 100%;">
+              View Claim Status &rarr;
+            </a>
+          {% elif current_user.is_authenticated %}
+            <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.4;">
+              Is this your lost property? File an ownership claim to submit private verification details to security.
+            </p>
+            <a href="{{ url_for('claim_item', found_id=item.id) }}" class="btn btn-primary btn-sm" style="width: 100%; font-weight: 700;">
+              ⚡ Submit Ownership Claim
+            </a>
+          {% else %}
+            <a href="{{ url_for('login') }}" class="btn btn-secondary btn-sm" style="width: 100%;">
+              Sign In to Claim Item
+            </a>
+          {% endif %}
+        </div>
+      {% endif %}
     </div>
 
     <!-- Item Information -->
@@ -102,6 +171,17 @@
           {{ item.description }}
         </p>
       </div>
+
+      {% if item.admin_resolution_notes %}
+        <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 1.15rem; border-radius: 8px;">
+          <h4 style="font-size: 0.92rem; font-weight: 700; color: #166534; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.4rem;">
+            📜 Official Custody &amp; Handover Audit Certificate
+          </h4>
+          <p style="color: #14532d; font-size: 0.88rem; line-height: 1.5; margin: 0;">
+            {{ item.admin_resolution_notes }}
+          </p>
+        </div>
+      {% endif %}
 
       {% if item.identifying_details %}
         <div style="background: #fefce8; border: 1px solid #fef08a; padding: 1.15rem; border-radius: 8px;">
@@ -189,6 +269,11 @@
             <a href="{{ url_for('item_details', item_id=match.item.id) }}" class="btn btn-secondary btn-sm" style="margin-top: 0.5rem; width: 100%;">
               View Details &rarr;
             </a>
+            {% if current_user.is_authenticated and match.item.report_type == 'found' and match.item.status != 'Resolved' and match.item.user_id != current_user.id %}
+              <a href="{{ url_for('claim_item', found_id=match.item.id) }}" class="btn btn-primary btn-sm" style="margin-top: 0.35rem; width: 100%; font-weight: 700;">
+                ⚡ Claim Item
+              </a>
+            {% endif %}
           </div>
         </div>
       {% endfor %}

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}Lost &amp; Found Registry - Public Spaces{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -78,6 +79,11 @@
         <a href="{{ url_for('dashboard') }}" class="sidebar-tab {% if request.endpoint == 'dashboard' %}active{% endif %}">
           <span class="sidebar-tab-icon">📋</span>
           <span class="sidebar-tab-label">My Dashboard</span>
+        </a>
+
+        <a href="{{ url_for('my_claims') }}" class="sidebar-tab {% if request.endpoint == 'my_claims' %}active{% endif %}">
+          <span class="sidebar-tab-icon">📑</span>
+          <span class="sidebar-tab-label">My Claims</span>
         </a>
 
         <a href="{{ url_for('report') }}" class="sidebar-tab sidebar-tab-action {% if request.endpoint == 'report' %}active{% endif %}">
@@ -170,6 +176,43 @@
 
   {% block scripts %}{% endblock %}
   <script>
+    (function() {
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = meta ? meta.getAttribute('content') : '';
+      if (csrfToken) {
+        // Automatically inject CSRF header into fetch requests
+        if (window.fetch) {
+          const _fetch = window.fetch;
+          window.fetch = function(url, options) {
+            options = options || {};
+            const method = (options.method || 'GET').toUpperCase();
+            if (!['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)) {
+              options.headers = options.headers || {};
+              if (options.headers instanceof Headers) {
+                if (!options.headers.has('X-CSRFToken')) options.headers.set('X-CSRFToken', csrfToken);
+              } else if (!options.headers['X-CSRFToken'] && !options.headers['x-csrftoken']) {
+                options.headers['X-CSRFToken'] = csrfToken;
+              }
+            }
+            return _fetch.call(this, url, options);
+          };
+        }
+        // Automatically inject CSRF header into XMLHttpRequest
+        const _open = XMLHttpRequest.prototype.open;
+        const _send = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.open = function(method) {
+          this._csrfMethod = (method || 'GET').toUpperCase();
+          return _open.apply(this, arguments);
+        };
+        XMLHttpRequest.prototype.send = function() {
+          if (this._csrfMethod && !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(this._csrfMethod)) {
+            try { this.setRequestHeader('X-CSRFToken', csrfToken); } catch(e) {}
+          }
+          return _send.apply(this, arguments);
+        };
+      }
+    })();
+
     function toggleSidebar() {
       const sidebar = document.getElementById('appSidebar');
       const backdrop = document.getElementById('sidebarBackdrop');

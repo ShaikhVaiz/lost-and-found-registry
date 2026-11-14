@@ -7,7 +7,7 @@
   <div>
     <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--espresso);">Administrator Panel</h1>
     <p style="color: var(--text-muted); font-size: 0.95rem;">
-      Master inventory audit, report moderation, and registered user directory.
+      Master inventory audit, report moderation, ownership claims verification desk, and citizen directory.
     </p>
   </div>
   <a href="{{ url_for('report') }}" class="btn btn-primary btn-sm">+ Log New Property</a>
@@ -20,6 +20,14 @@
     <div class="stat-label">Total Reports</div>
   </div>
   <div class="stat-card">
+    <div class="stat-num" style="color: #ca8a04;">{{ stats.pending_claims }}</div>
+    <div class="stat-label">Pending Claims</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color: var(--resolved-stamp);">{{ stats.approved_claims }}</div>
+    <div class="stat-label">Approved Claims</div>
+  </div>
+  <div class="stat-card">
     <div class="stat-num" style="color: var(--lost-stamp);">{{ stats.lost_active }}</div>
     <div class="stat-label">Active Lost</div>
   </div>
@@ -28,16 +36,241 @@
     <div class="stat-label">Stored Found</div>
   </div>
   <div class="stat-card">
-    <div class="stat-num" style="color: var(--resolved-stamp);">{{ stats.resolved }}</div>
-    <div class="stat-label">Resolved</div>
-  </div>
-  <div class="stat-card">
     <div class="stat-num">{{ stats.total_users }}</div>
     <div class="stat-label">Registered Users</div>
   </div>
 </div>
 
-<!-- Master Reports Table -->
+<!-- ========================================================================= -->
+<!-- Section 1: Ownership Claims & Verification Desk -->
+<!-- ========================================================================= -->
+<div style="margin-bottom: 3rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+    <div>
+      <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--espresso); display: flex; align-items: center; gap: 0.5rem;">
+        🛡️ Ownership Claims &amp; Verification Desk ({{ claims|length }})
+      </h2>
+      <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">
+        Compare claimant verification answers side-by-side with confidential finder proof. Only approved claims resolve associated reports.
+      </p>
+    </div>
+    {% if stats.pending_claims > 0 %}
+      <span class="badge" style="background: #fef08a; color: #854d0e; font-weight: 700; padding: 0.35rem 0.75rem; border: 1px solid #fde047;">
+        ⚡ {{ stats.pending_claims }} Awaiting Action
+      </span>
+    {% endif %}
+  </div>
+
+  {% if claims %}
+    {% set pending_claims = claims | selectattr("status", "equalto", "Pending") | list %}
+    {% set reviewed_claims = claims | rejectattr("status", "equalto", "Pending") | list %}
+
+    <!-- Pending Claims Requiring Verification -->
+    {% if pending_claims %}
+      <div style="margin-bottom: 2rem;">
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: #854d0e; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">
+          ⏳ Pending Claims Requiring Review ({{ pending_claims|length }})
+        </h3>
+
+        {% for c in pending_claims %}
+          <div style="background: var(--bg-card); border: 2px solid #fde047; border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px dashed var(--border); padding-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                <span class="badge" style="background: #fef08a; color: #854d0e; font-weight: 800;">CLAIM #{{ c.id }}</span>
+                <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 0.5rem;">
+                  Submitted on {{ c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '—' }}
+                </span>
+              </div>
+              <div style="font-size: 0.85rem;">
+                <strong>Claimant:</strong> {{ c.claimant.name if c.claimant else 'Unknown' }} (<code>{{ c.claimant.email if c.claimant else '—' }}</code>)
+              </div>
+            </div>
+
+            <!-- Side-by-Side Comparison Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
+              <!-- Left: Found Report & Confidential Proof -->
+              <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem;">
+                <div style="display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.4rem;">
+                  <span class="badge badge-found">FOUND ITEM #{{ c.found_report.id }}</span>
+                  <span style="font-size: 0.8rem; color: var(--text-muted);">{{ c.found_report.category }}</span>
+                </div>
+                <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
+                  <a href="{{ url_for('item_details', item_id=c.found_report.id) }}" target="_blank" style="text-decoration: underline;">
+                    {{ c.found_report.title }}
+                  </a>
+                </h4>
+                <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                  📍 {{ c.found_report.location }} &bull; 🗓️ {{ c.found_report.incident_date }}
+                </div>
+
+                <div style="background: #fefce8; border: 1px solid #fef08a; border-radius: 6px; padding: 0.85rem;">
+                  <div style="font-size: 0.78rem; font-weight: 700; color: #854d0e; text-transform: uppercase; margin-bottom: 0.25rem;">
+                    🔒 Finder's Confidential Proof (Stored Record)
+                  </div>
+                  <div style="font-size: 0.88rem; color: #713f12; line-height: 1.4;">
+                    {{ c.found_report.identifying_details or '(No confidential proof recorded by finder)' }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right: Claimant's Matching Lost Report & Submitted Answers -->
+              <div style="background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem;">
+                <div style="display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.4rem;">
+                  <span class="badge badge-lost">LOST ITEM #{{ c.lost_report.id }}</span>
+                  <span style="font-size: 0.8rem; color: var(--text-muted);">{{ c.lost_report.category }}</span>
+                </div>
+                <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
+                  <a href="{{ url_for('item_details', item_id=c.lost_report.id) }}" target="_blank" style="text-decoration: underline;">
+                    {{ c.lost_report.title }}
+                  </a>
+                </h4>
+                <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                  📍 {{ c.lost_report.location }} &bull; 🗓️ {{ c.lost_report.incident_date }}
+                </div>
+
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 0.85rem;">
+                  <div style="font-size: 0.78rem; font-weight: 700; color: #1e40af; text-transform: uppercase; margin-bottom: 0.25rem;">
+                    📝 Claimant's Privately Submitted Answers
+                  </div>
+                  <div style="font-size: 0.88rem; color: #1e3a8a; line-height: 1.4; white-space: pre-wrap;">
+                    {{ c.claim_details }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Admin Decision Form -->
+            <form method="POST" action="{{ url_for('admin_review_claim', claim_id=c.id) }}" style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 1rem;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div style="margin-bottom: 0.75rem;">
+                <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.35rem;">
+                  Administrative Verification Notes / Justification:
+                </label>
+                <input type="text" name="admin_notes" class="form-control" placeholder="e.g. Serial numbers verified against manufacturer portal. Property release approved." style="font-size: 0.88rem; padding: 0.5rem 0.75rem;">
+              </div>
+              <div style="display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+                <button type="submit" name="action" value="reject" class="btn btn-secondary btn-sm" style="color: var(--lost); border-color: #fca5a5;" onclick="return confirm('Reject Claim #{{ c.id }}? Associated reports will remain Active in the registry.');">
+                  ✕ Reject Claim
+                </button>
+                <button type="submit" name="action" value="approve" class="btn btn-primary btn-sm" style="background: #15803d; border-color: #166534;" onclick="return confirm('Approve Claim #{{ c.id }}? Both reports will transition to Resolved and competing claims will be closed.');">
+                  ✓ Approve &amp; Resolve Reports
+                </button>
+              </div>
+            </form>
+
+            <!-- Append-Only Claim Audit History -->
+            {% if c.audit_logs %}
+              <div style="margin-top: 0.85rem; padding: 0.65rem 0.85rem; background: #f1f5f9; border-radius: 6px; font-size: 0.78rem; border: 1px solid #e2e8f0;">
+                <strong style="color: #334155; text-transform: uppercase; letter-spacing: 0.3px;">📜 Claim Audit Trail ({{ c.audit_logs|length }} event{{ 's' if c.audit_logs|length > 1 else '' }}):</strong>
+                <div style="margin-top: 0.35rem; display: flex; flex-direction: column; gap: 0.25rem;">
+                  {% for a in c.audit_logs %}
+                    <div style="color: #475569; line-height: 1.35;">
+                      <span style="font-family: monospace; font-weight: 700; color: #1e293b;">[{{ a.action }}]</span>
+                      {{ a.created_at.strftime('%Y-%m-%d %H:%M') if a.created_at else '' }}
+                      {% if a.actor %}by {{ a.actor.name }}{% endif %}:
+                      <em>{{ a.reason or 'No justification provided' }}</em>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <!-- Historical / Reviewed Claims -->
+    {% if reviewed_claims %}
+      <div>
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.75rem;">
+          Historical Claims Archive ({{ reviewed_claims|length }})
+        </h3>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Claim ID</th>
+                <th>Status</th>
+                <th>Found Item</th>
+                <th>Lost Item</th>
+                <th>Claimant</th>
+                <th>Outcome / Audit Notes</th>
+                <th>Reopen Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in reviewed_claims %}
+                <tr>
+                  <td style="font-weight: 700;">#{{ c.id }}</td>
+                  <td>
+                    {% if c.status == 'Approved' %}
+                      <span class="badge badge-resolved">APPROVED ✓</span>
+                    {% elif c.status == 'Rejected' %}
+                      <span class="badge badge-lost">REJECTED ✕</span>
+                    {% else %}
+                      <span class="badge">{{ c.status }}</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a href="{{ url_for('item_details', item_id=c.found_report.id) }}" style="font-weight: 600;">
+                      #{{ c.found_report.id }} - {{ c.found_report.title }}
+                    </a>
+                  </td>
+                  <td>
+                    <a href="{{ url_for('item_details', item_id=c.lost_report.id) }}" style="font-weight: 600;">
+                      #{{ c.lost_report.id }} - {{ c.lost_report.title }}
+                    </a>
+                  </td>
+                  <td>
+                    {{ c.claimant.name if c.claimant else 'User #' ~ c.claimant_id }}
+                  </td>
+                  <td style="font-size: 0.82rem; max-width: 250px;">
+                    <div style="line-height: 1.4;">{{ c.admin_notes or '—' }}</div>
+                    {% if c.reviewed_at %}
+                      <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">
+                        Reviewed: {{ c.reviewed_at.strftime('%Y-%m-%d %H:%M') }}
+                      </div>
+                    {% endif %}
+                    {% if c.audit_logs %}
+                      <div style="font-size: 0.72rem; color: #475569; margin-top: 0.4rem; padding-top: 0.3rem; border-top: 1px dotted #cbd5e1;">
+                        <strong>Audit Trail ({{ c.audit_logs|length }}):</strong>
+                        {% for a in c.audit_logs %}
+                          <div style="margin-top: 2px;">• <code>{{ a.action }}</code>: {{ a.reason }}</div>
+                        {% endfor %}
+                      </div>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if c.status == 'Rejected' and c.found_report.status != 'Resolved' %}
+                      <form method="POST" action="{{ url_for('admin_reopen_claim', claim_id=c.id) }}" style="display: flex; gap: 0.35rem; align-items: center;" onsubmit="return confirm('Reopen Claim #{{ c.id }} for re-evaluation?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="text" name="reopen_notes" placeholder="Reason..." style="font-size: 0.75rem; padding: 0.25rem 0.4rem; width: 110px;" class="form-control" required>
+                        <button type="submit" class="btn btn-secondary btn-sm" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                          Reopen
+                        </button>
+                      </form>
+                    {% else %}
+                      <span style="font-size: 0.75rem; color: var(--text-muted);">Archived</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+
+  {% else %}
+    <div style="background: var(--bg-card); border: 2px dashed var(--border-vintage); border-radius: var(--radius); padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.92rem;">
+      No ownership claims have been submitted by citizens yet. When citizens file claims against matching found reports, they will appear here for verification.
+    </div>
+  {% endif %}
+</div>
+
+<!-- ========================================================================= -->
+<!-- Section 2: Master Reports Inventory -->
+<!-- ========================================================================= -->
 <div style="margin-bottom: 2.5rem;">
   <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--espresso); margin-bottom: 1rem;">
     Master Reports Inventory ({{ reports|length }})
@@ -78,20 +311,25 @@
               <div style="font-size: 0.78rem; color: var(--text-muted);">{{ r.contact_info }}</div>
             </td>
             <td>
-              <form method="POST" action="{{ url_for('update_status', item_id=r.id) }}" style="display: inline-flex; align-items: center; gap: 0.35rem;">
-                <select name="status" class="form-select" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; width: auto;" onchange="this.form.submit()">
-                  <option value="Active" {% if r.status == 'Active' %}selected{% endif %}>Active</option>
-                  <option value="Matched" {% if r.status == 'Matched' %}selected{% endif %}>Matched</option>
-                  <option value="Resolved" {% if r.status == 'Resolved' %}selected{% endif %}>Resolved</option>
-                </select>
-              </form>
+              {% if r.status == 'Resolved' %}
+                <span class="badge badge-resolved" style="font-weight: 700;">RESOLVED ✓</span>
+              {% else %}
+                <form method="POST" action="{{ url_for('update_status', item_id=r.id) }}" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <select name="status" class="form-select" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; width: auto;" onchange="this.form.submit()">
+                    <option value="Active" {% if r.status == 'Active' %}selected{% endif %}>Active</option>
+                    <option value="Matched" {% if r.status == 'Matched' %}selected{% endif %}>Matched</option>
+                  </select>
+                </form>
+              {% endif %}
             </td>
             <td>
               <div style="display: flex; gap: 0.35rem; align-items: center;">
-                <a href="{{ url_for('item_details', item_id=r.id) }}" class="btn btn-secondary btn-sm" title="View">
+                <a href="{{ url_for('item_details', item_id=r.id) }}" class="btn btn-secondary btn-sm" title="View Details">
                   View
                 </a>
-                <form method="POST" action="{{ url_for('delete_report', item_id=r.id) }}" style="display: inline;" onsubmit="return confirm('Permanently delete report #{{ r.id }}?');">
+                <form method="POST" action="{{ url_for('delete_report', item_id=r.id) }}" style="display: inline;" onsubmit="return confirm('Permanently delete report #{{ r.id }}? (Will be rejected if claim history exists)');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--lost);" title="Delete">
                     ✕
                   </button>
@@ -105,7 +343,9 @@
   </div>
 </div>
 
-<!-- Users Table -->
+<!-- ========================================================================= -->
+<!-- Section 3: Registered Users Directory -->
+<!-- ========================================================================= -->
 <div>
   <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 1rem;">
     Registered Users ({{ users|length }})

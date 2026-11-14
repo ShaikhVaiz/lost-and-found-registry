@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Ownership Claim - Lost &amp; Found Registry{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem;">
+  <a href="{{ url_for('item_details', item_id=found_item.id) }}" class="btn btn-secondary btn-sm">&larr; Back to Found Item Details</a>
+</div>
+
+<div style="max-width: 800px; margin: 0 auto;">
+  <div style="margin-bottom: 2rem;">
+    <span class="badge badge-found" style="margin-bottom: 0.5rem;">CUSTODY VERIFICATION DESK</span>
+    <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--espresso);">
+      Formal Ownership Claim
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      To reclaim property currently held in institutional custody, you must link your registered lost item report and provide verifiable ownership proof.
+    </p>
+  </div>
+
+  <!-- Privacy Shield Notice -->
+  <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-bottom: 2rem;">
+    <h4 style="font-size: 0.95rem; font-weight: 700; color: #1e40af; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
+      🛡️ Zero-Knowledge Proof &amp; Anti-Fraud Protection
+    </h4>
+    <p style="font-size: 0.88rem; color: #1e3a8a; line-height: 1.5; margin: 0;">
+      To protect citizens against fraudulent claims, the finder's confidential proof details are completely hidden. Your submitted verification answers will be cross-examined side-by-side by an authorized security administrator before property release is approved.
+    </p>
+  </div>
+
+  <!-- Found Item In Custody Summary -->
+  <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem; box-shadow: var(--shadow-sm);">
+    <div style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 0.5rem;">
+      Item Currently Held In Custody
+    </div>
+    <div style="display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap;">
+      <div style="width: 70px; height: 70px; border-radius: 8px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--border);">
+        {% if found_item.image_filename %}
+          {% if found_item.image_filename.startswith('data:') or found_item.image_filename.startswith('http') %}
+            <img src="{{ found_item.image_filename }}" alt="{{ found_item.title }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+          {% else %}
+            <img src="{{ url_for('static', filename='uploads/' + found_item.image_filename) }}" alt="{{ found_item.title }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+          {% endif %}
+        {% else %}
+          <span style="font-size: 2rem;">📦</span>
+        {% endif %}
+      </div>
+      <div style="flex: 1; min-width: 200px;">
+        <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.25rem;">
+          <span class="badge badge-found">FOUND #{{ found_item.id }}</span>
+          <span style="font-size: 0.85rem; color: var(--text-muted);">{{ found_item.category }}</span>
+        </div>
+        <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.25rem;">
+          {{ found_item.title }}
+        </h2>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">
+          📍 <strong>Found At:</strong> {{ found_item.location }} &bull; 🗓️ <strong>Found On:</strong> {{ found_item.incident_date }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if existing_claim %}
+    <div style="background: #fefce8; border: 1px solid #fef08a; border-radius: var(--radius); padding: 1.5rem; text-align: center; margin-bottom: 2rem;">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
+      <h3 style="font-size: 1.15rem; font-weight: 700; color: #854d0e; margin-bottom: 0.5rem;">
+        Existing Claim on File
+      </h3>
+      <p style="color: #713f12; font-size: 0.92rem; margin-bottom: 1.25rem;">
+        You have already registered an ownership claim for this found item (Claim #{{ existing_claim.id }} &bull; Status: <strong>{{ existing_claim.status.upper() }}</strong>).
+      </p>
+      <a href="{{ url_for('my_claims') }}" class="btn btn-primary btn-sm">View My Claims Track Record</a>
+    </div>
+  {% elif not my_lost_reports %}
+    <div style="background: var(--bg-card); border: 2px dashed var(--border-vintage); border-radius: var(--radius); padding: 2.5rem 1.5rem; text-align: center;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">📋</div>
+      <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;">
+        No Active Lost Reports Found
+      </h3>
+      <p style="color: var(--text-muted); font-size: 0.92rem; max-width: 500px; margin: 0 auto 1.5rem auto;">
+        To file an official ownership claim, you must link it to a registered Lost Item report under your citizen account.
+      </p>
+      <a href="{{ url_for('report', type='lost') }}" class="btn btn-lost">
+        🔴 Submit a Lost Item Report First
+      </a>
+    </div>
+  {% else %}
+    <!-- Submission Form -->
+    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; box-shadow: var(--shadow-sm);">
+      <form method="POST" action="{{ url_for('claim_item', found_id=found_item.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <!-- Step 1: Select Lost Report -->
+        <div class="form-group" style="margin-bottom: 1.75rem;">
+          <label class="form-label" for="lost_report_id" style="font-weight: 700;">
+            1. Select Your Matching Lost Item Report <span style="color: var(--lost);">*</span>
+          </label>
+          <select name="lost_report_id" id="lost_report_id" class="form-select" required style="font-size: 0.95rem;">
+            <option value="" disabled selected>-- Select from your active lost reports --</option>
+            {% for lr in my_lost_reports %}
+              <option value="{{ lr.id }}">
+                #{{ lr.id }} - {{ lr.title }} (Lost {{ lr.incident_date }} at {{ lr.location }})
+              </option>
+            {% endfor %}
+          </select>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">
+            Only active lost reports logged under your account are eligible to claim matching found property.
+          </div>
+        </div>
+
+        <!-- Step 2: Private Ownership Details -->
+        <div class="form-group" style="margin-bottom: 2rem;">
+          <label class="form-label" for="claim_details" style="font-weight: 700;">
+            2. Confidential Ownership Verification Details <span style="color: var(--lost);">*</span>
+          </label>
+          <textarea
+            name="claim_details"
+            id="claim_details"
+            rows="5"
+            class="form-control"
+            required
+            placeholder="Describe private identifiable characteristics not mentioned in the public summary: e.g., lockscreen photo, serial number / IMEI, engravings, scratches, stickers, currency amounts, internal bag contents, secret compartments, or keychain charms."
+            style="line-height: 1.5; font-size: 0.95rem;"
+          ></textarea>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">
+            ⚠️ <strong>Notice:</strong> These confidential details are accessible only by system administrators for verification and will never be disclosed to the finder or the public. Do NOT provide government ID numbers or sensitive card PINs.
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div style="display: flex; gap: 1rem; align-items: center; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+          <a href="{{ url_for('item_details', item_id=found_item.id) }}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary" style="padding: 0.65rem 1.5rem; font-weight: 700;">
+            🔒 Submit Official Claim
+          </button>
+        </div>
+      </form>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
