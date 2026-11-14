@@ -151,3 +151,22 @@ Production configuration uses environment variables for administrator credential
 **Status:** Deployed and manually tested
 
 This project was developed as a practical web application project to explore backend development, database integration, authentication, security and deployment.
+## Application Screenshots
+
+### Login Page
+![Login Page](docs/screenshots/login.png)
+
+### User Dashboard
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Report an Item
+![Report Form](docs/screenshots/report-form.png)
+
+### Possible Matches
+![Matches](docs/screenshots/matches.png)
+
+### Claim Verification
+![Claim Page](docs/screenshots/claim-page.png)
+
+### Admin Dashboard
+![Admin Dashboard](docs/screenshots/admin-dashboard.png)
